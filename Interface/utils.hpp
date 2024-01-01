@@ -2,6 +2,7 @@
 #include <sddl.h>
 #include <string>
 #include <sstream>
+#include <unordered_set>
 
 #include "macros.hpp"
 
@@ -10,12 +11,10 @@ std::u16string GetCurrentUserSID()
     HANDLE hToken;
     DWORD dwTokenInfoSize;
 
-    HANDLE hProc = GetCurrentProcess();
-    EXPECT(OpenProcessToken(hProc, TOKEN_QUERY, &hToken));
+    EXPECT(OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken));
     if (!GetTokenInformation(hToken, TokenUser, NULL, 0, &dwTokenInfoSize)) {
         EXPECT(GetLastError() == ERROR_INSUFFICIENT_BUFFER);
     }
-    CloseHandle(hProc);
 
     PTOKEN_USER pTokenUser = reinterpret_cast<PTOKEN_USER>(malloc(dwTokenInfoSize));
     EXPECT(pTokenUser);
@@ -87,26 +86,87 @@ std::u16string GetNUMAInfo()
     DWORD_PTR processAffinityMask, systemAffinityMask;
 
 
-    HANDLE hProc = GetCurrentProcess();
-    GetProcessAffinityMask(hProc, &processAffinityMask, &systemAffinityMask);
-
-    CloseHandle(hProc);
+    GetProcessAffinityMask(GetCurrentProcess(), &processAffinityMask, &systemAffinityMask);
 
     ULONG highestNodeNumber;
     EXPECT(GetNumaHighestNodeNumber(&highestNodeNumber));
 
-    ULONG totalNodesCount = 0;
-    for (ULONG nodeNumber = 0; nodeNumber <= highestNodeNumber; ++nodeNumber)
+    std::unordered_set<UCHAR> nodeNumbers;
+
+    for (UCHAR processor = 0; processor < MAXIMUM_PROCESSORS; ++processor)
     {
-        
+        UCHAR nodeNumber;
+        GetNumaProcessorNode(processor, &nodeNumber);
+
+        if (nodeNumber == 0xFF) {
+            continue;
+        }
+
+        EXPECT(nodeNumber <= highestNodeNumber);
+        nodeNumbers.insert(nodeNumber);
     }
 
     std::stringstream stream;
     stream << "Process affinity mask: 0x" << std::hex << processAffinityMask << "\n";
     stream << "System affinity mask: 0x" << std::hex << systemAffinityMask << "\n";
-    stream << "Total nodes count: " << std::dec << totalNodesCount << "\n";
+    stream << "Total nodes count: " << std::dec << (DWORD) nodeNumbers.size();
 
     std::u16string buffer = converter.from_bytes(stream.str());
+
+    return buffer;
+}
+
+std::u16string GetCPUSetsInfo() {
+    ULONG requiredIdCount;
+    HANDLE hProc = GetCurrentProcess();
+
+    // firstly get the capacity needed
+    EXPECT(GetProcessDefaultCpuSets(hProc, NULL, 0, &requiredIdCount));
+
+    ULONG* cpuSetIds = (PULONG)malloc(requiredIdCount * sizeof(ULONG));
+    EXPECT(cpuSetIds);
+    EXPECT(GetProcessDefaultCpuSets(hProc, cpuSetIds, requiredIdCount, &requiredIdCount));
+
+    std::wstring_convert<std::codecvt_utf8_utf16<char16_t, 0x10ffff, std::little_endian>, char16_t> conv;
+
+    std::u16string buffer;
+    buffer += u"Process default CPU sets count: " + conv.from_bytes(std::to_string(requiredIdCount)) + u"\n";
+
+    for (ULONG id = 0; id < requiredIdCount; ++id)
+    {
+        std::u16string idStr = conv.from_bytes(std::to_string(id));
+        std::u16string valueStr = conv.from_bytes(std::to_string(cpuSetIds[id]));
+        buffer += u"CPU set #" + idStr + u": " + valueStr + u"\n";
+    }
+
+    free(cpuSetIds);
+
+    ULONG returnedLength;
+
+    GetSystemCpuSetInformation(NULL, 0, &returnedLength, hProc, 0);
+    
+    SYSTEM_CPU_SET_INFORMATION* cpuSetsInfo = (SYSTEM_CPU_SET_INFORMATION*)malloc(returnedLength);
+    EXPECT(cpuSetsInfo);
+
+    GetSystemCpuSetInformation(cpuSetsInfo, returnedLength, &returnedLength, hProc, 0);
+
+    ULONG entriesCount = returnedLength / sizeof(SYSTEM_CPU_SET_INFORMATION);
+    buffer += u"---\n";
+    buffer += u"System CPU sets count: " + conv.from_bytes(std::to_string(entriesCount)) + u"\n";
+    for (ULONG entry = 0; entry < entriesCount; ++entry)
+    {
+        const SYSTEM_CPU_SET_INFORMATION& cpuSetInfo = cpuSetsInfo[entry];
+        std::u16string entryStr = conv.from_bytes(std::to_string(entry));
+
+        std::u16string sizeStr = conv.from_bytes(std::to_string(cpuSetInfo.Size));
+        std::u16string typeStr = conv.from_bytes(std::to_string(cpuSetInfo.Type));
+
+        // TODO: display info for the cpuSet field as well
+        std::u16string data = u"Size - " + sizeStr + u"; Type - " + typeStr;
+        buffer += u"Entry #" + entryStr + u": " + data + u"\n";
+    }
+
+    free(cpuSetsInfo);
 
     return buffer;
 }

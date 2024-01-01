@@ -1,4 +1,5 @@
 #include <Windows.h>
+#include <ShlObj.h>
 
 #include "bmp_parser.hpp"
 #include "macros.hpp"
@@ -118,8 +119,23 @@ VOID PopulateWindow(HWND hWnd)
     infoBuffer += GetHTInfo() + u"\n";
     infoBuffer += u"------ NUMA info ------\n";
     infoBuffer += GetNUMAInfo() + u"\n";
+    infoBuffer += u"------ CPU sets ------\n";
+    infoBuffer += GetCPUSetsInfo() + u"\n";
 
     SetWindowText(hInfoPanel, (LPCWSTR)infoBuffer.c_str());
+
+    const char* savePath = "C:\\Facultate\\CSSO\\Week6\\info.txt";
+    DWORD code = SHCreateDirectoryExA(NULL, "C:\\Facultate\\CSSO\\Week6", NULL);
+    EXPECT(code == ERROR_SUCCESS || code == ERROR_ALREADY_EXISTS);
+
+    HANDLE hFile = CreateFileA(savePath, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    EXPECT(hFile != INVALID_HANDLE_VALUE);
+
+    std::string dumpBuffer;
+    for (char16_t c : infoBuffer)
+        dumpBuffer += (char)c;
+    EXPECT(WriteFile(hFile, dumpBuffer.c_str(), (DWORD)dumpBuffer.size(), NULL, NULL));
+    EXPECT(CloseHandle(hFile));
 }
 
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
