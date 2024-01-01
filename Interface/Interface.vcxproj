@@ -137,6 +137,7 @@
     <ClInclude Include="debugging.hpp" />
     <ClInclude Include="handlers.hpp" />
     <ClInclude Include="macros.hpp" />
+    <ClInclude Include="utils.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

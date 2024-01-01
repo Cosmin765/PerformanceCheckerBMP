@@ -5,13 +5,19 @@
 
 #include "debugging.hpp"
 
-VOID HandlePaint(HWND hWnd) 
+VOID HandlePaint(HWND hWnd, int width, int height)
 {
     PAINTSTRUCT ps;
     HDC hdc = BeginPaint(hWnd, &ps);
 
     // paint the update region with the default window bg color
-    FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
+    RECT windowRect;
+    windowRect.left = 0;
+    windowRect.top = 0;
+    windowRect.right = width;
+    windowRect.bottom = height;
+
+    FillRect(hdc, &windowRect, (HBRUSH)(COLOR_WINDOW + 1));
 
     EndPaint(hWnd, &ps);
 }
@@ -77,9 +83,12 @@ std::vector<std::u16string> HandlePickImages()
 }
 
 
-VOID HandleDisplayImages(const std::vector<std::u16string>& filepaths) {
+VOID HandleDisplayImages(HWND hWnd, const std::vector<std::u16string>& filepaths) {
+    std::u16string buffer = u"BMP images:\n";
+
     for (const auto& filepath : filepaths) {
-        LogString(filepath.c_str());
-        LogString("\n");
+        buffer += filepath;
+        buffer += L'\n';
     }
+    SetWindowText(hWnd, (LPCWSTR)buffer.c_str());
 }
