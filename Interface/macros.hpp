@@ -23,3 +23,15 @@
 #define SEPARATOR_PERCENT_X 60
 #define SEPARATOR_PERCENT_Y 30
 #define PADDING 15
+
+#define UPLOAD_BUTTON_W 150
+#define UPLOAD_BUTTON_H 30
+
+#define LABEL_W 150
+#define LABEL_H 30
+
+#define INPUT_W 300
+#define INPUT_H 20
+
+#define HOME_DIR "C:\\Facultate\\CSSO\\Week6"
+#define INFO_FILEPATH "C:\\Facultate\\CSSO\\Week6\\info.txt"

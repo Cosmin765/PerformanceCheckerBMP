@@ -92,8 +92,3 @@ VOID HandleDisplayImages(HWND hWnd, const std::vector<std::u16string>& filepaths
     }
     SetWindowText(hWnd, (LPCWSTR)buffer.c_str());
 }
-
-VOID HandleDisplayCPUSetInfo()
-{
-
-}

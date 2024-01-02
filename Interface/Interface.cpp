@@ -10,6 +10,8 @@
 HWND hUploadButton = NULL;
 HWND hInfoPanel = NULL;
 HWND hFilenamesPanel = NULL;
+HWND hGrayscaleLabel = NULL, hGrayscaleInput = NULL;
+HWND hInvertLabel = NULL, hInvertInput = NULL;
 int width = 1024, height = 576;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -38,6 +40,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         int sepX = SEPARATOR_PERCENT_X * width / 100;
         int sepY = SEPARATOR_PERCENT_Y * height / 100;
+
+        if (hUploadButton) {
+            // set the style for the button
+            int x = (sepX - UPLOAD_BUTTON_W) / 2;
+            MoveWindow(hUploadButton, x, PADDING, UPLOAD_BUTTON_W, UPLOAD_BUTTON_H, TRUE);
+        }
 
         if (hInfoPanel) {
             MoveWindow(hInfoPanel, sepX, sepY, width - sepX, height - sepY, TRUE);
@@ -94,6 +102,34 @@ VOID PopulateWindow(HWND hWnd)
         hWnd, (HMENU)UPLOAD_BUTTON_ID, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
     EXPECT(hUploadButton);
 
+    // inputs for specifying output paths
+
+    // grayscale
+    hGrayscaleLabel = CreateWindow(
+        L"STATIC", L"Grayscale output path:", 
+        WS_CHILD | WS_VISIBLE, 
+        0, 0, 0, 0, 
+        hWnd, NULL, NULL, NULL);
+    hGrayscaleInput = CreateWindow(
+        L"Edit", L"", 
+        WS_CHILD | WS_VISIBLE | WS_BORDER, 
+        0, 0, 0, 0, 
+        hWnd, NULL, NULL, NULL);
+    EXPECT(hGrayscaleLabel && hGrayscaleInput);
+
+    // invert
+    hInvertLabel = CreateWindow(
+        L"STATIC", L"Invert output path:",
+        WS_CHILD | WS_VISIBLE,
+        0, 0, 0, 0,
+        hWnd, NULL, NULL, NULL);
+    hInvertInput = CreateWindow(
+        L"Edit", L"",
+        WS_CHILD | WS_VISIBLE | WS_BORDER,
+        0, 0, 0, 0,
+        hWnd, NULL, NULL, NULL);
+    EXPECT(hInvertLabel && hInvertInput);
+
     hFilenamesPanel = CreateWindow(L"EDIT", L"",
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL |
         ES_LEFT | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
@@ -134,11 +170,10 @@ VOID PopulateWindow(HWND hWnd)
 
     SetWindowText(hInfoPanel, (LPCWSTR)infoBuffer.c_str());
 
-    const char* savePath = "C:\\Facultate\\CSSO\\Week6\\info.txt";
-    DWORD code = SHCreateDirectoryExA(NULL, "C:\\Facultate\\CSSO\\Week6", NULL);
+    DWORD code = SHCreateDirectoryExA(NULL, HOME_DIR, NULL);
     EXPECT(code == ERROR_SUCCESS || code == ERROR_ALREADY_EXISTS);
 
-    HANDLE hFile = CreateFileA(savePath, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE hFile = CreateFileA(INFO_FILEPATH, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     EXPECT(hFile != INVALID_HANDLE_VALUE);
 
     std::string dumpBuffer;
@@ -153,7 +188,12 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     HWND hWnd = InitInstance(hInstance, nShowCmd);
     PopulateWindow(hWnd);
 
-    MoveWindow(hUploadButton, PADDING, PADDING, 150, 30, TRUE);
+    // set the style for the inputs
+    MoveWindow(hGrayscaleLabel, PADDING, 2 * PADDING + UPLOAD_BUTTON_H, LABEL_W, LABEL_H, TRUE);
+    MoveWindow(hGrayscaleInput, 2 * PADDING + LABEL_W, 2 * PADDING + UPLOAD_BUTTON_H, INPUT_W, INPUT_H, TRUE);
+
+    MoveWindow(hInvertLabel, PADDING, 3 * PADDING + UPLOAD_BUTTON_H + LABEL_H, LABEL_W, LABEL_H, TRUE);
+    MoveWindow(hInvertInput, 2 * PADDING + LABEL_W, 3 * PADDING + UPLOAD_BUTTON_H + LABEL_H, INPUT_W, INPUT_H, TRUE);
 
     // trigger size event
     MoveWindow(hWnd, 0, 0, width, height, TRUE);

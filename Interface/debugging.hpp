@@ -6,7 +6,7 @@
 #include <locale>
 #include <codecvt>
 
-constexpr char logLocation[] = "D:\\Facultate\\CSSO\\lab7\\log";
+constexpr char logLocation[] = "C:\\Facultate\\CSSO\\Week6\\log";
 
 std::string ConvertU16String(const char16_t* str) {
 	static std::wstring_convert<std::codecvt_utf8<char16_t>, char16_t> converter;
