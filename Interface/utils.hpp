@@ -73,7 +73,7 @@ std::u16string GetHTInfo()
 
     std::wstring_convert<std::codecvt_utf8_utf16<char16_t, 0x10ffff, std::little_endian>, char16_t> conv;
     
-    infoBuffer += u"Processor mask: " + conv.from_bytes(std::to_string(buffer.ProcessorMask)) + u"\n";
+    infoBuffer += u"Processor mask: " + conv.from_bytes(std::to_string(buffer.ProcessorMask)) + u"\r\n";
     infoBuffer += u"Relationship: " + conv.from_bytes(std::to_string(buffer.Relationship));
 
     return infoBuffer;
@@ -107,8 +107,8 @@ std::u16string GetNUMAInfo()
     }
 
     std::stringstream stream;
-    stream << "Process affinity mask: 0x" << std::hex << processAffinityMask << "\n";
-    stream << "System affinity mask: 0x" << std::hex << systemAffinityMask << "\n";
+    stream << "Process affinity mask: 0x" << std::hex << processAffinityMask << "\r\n";
+    stream << "System affinity mask: 0x" << std::hex << systemAffinityMask << "\r\n";
     stream << "Total nodes count: " << std::dec << (DWORD) nodeNumbers.size();
 
     std::u16string buffer = converter.from_bytes(stream.str());
@@ -116,7 +116,7 @@ std::u16string GetNUMAInfo()
     return buffer;
 }
 
-std::u16string GetCPUSetsInfo() {
+std::u16string GetCPUSetsInfo(std::vector<std::u16string>& cpuSetEntriesInfo) {
     ULONG requiredIdCount;
     HANDLE hProc = GetCurrentProcess();
 
@@ -130,13 +130,13 @@ std::u16string GetCPUSetsInfo() {
     std::wstring_convert<std::codecvt_utf8_utf16<char16_t, 0x10ffff, std::little_endian>, char16_t> conv;
 
     std::u16string buffer;
-    buffer += u"Process default CPU sets count: " + conv.from_bytes(std::to_string(requiredIdCount)) + u"\n";
+    buffer += u"Process default CPU sets count: " + conv.from_bytes(std::to_string(requiredIdCount)) + u"\r\n";
 
     for (ULONG id = 0; id < requiredIdCount; ++id)
     {
         std::u16string idStr = conv.from_bytes(std::to_string(id));
         std::u16string valueStr = conv.from_bytes(std::to_string(cpuSetIds[id]));
-        buffer += u"CPU set #" + idStr + u": " + valueStr + u"\n";
+        buffer += u"CPU set #" + idStr + u": " + valueStr + u"\r\n";
     }
 
     free(cpuSetIds);
@@ -151,8 +151,8 @@ std::u16string GetCPUSetsInfo() {
     GetSystemCpuSetInformation(cpuSetsInfo, returnedLength, &returnedLength, hProc, 0);
 
     ULONG entriesCount = returnedLength / sizeof(SYSTEM_CPU_SET_INFORMATION);
-    buffer += u"---\n";
-    buffer += u"System CPU sets count: " + conv.from_bytes(std::to_string(entriesCount)) + u"\n";
+    buffer += u"---\r\n";
+    buffer += u"System CPU sets count: " + conv.from_bytes(std::to_string(entriesCount));
     for (ULONG entry = 0; entry < entriesCount; ++entry)
     {
         const SYSTEM_CPU_SET_INFORMATION& cpuSetInfo = cpuSetsInfo[entry];
@@ -161,9 +161,27 @@ std::u16string GetCPUSetsInfo() {
         std::u16string sizeStr = conv.from_bytes(std::to_string(cpuSetInfo.Size));
         std::u16string typeStr = conv.from_bytes(std::to_string(cpuSetInfo.Type));
 
-        // TODO: display info for the cpuSet field as well
-        std::u16string data = u"Size - " + sizeStr + u"; Type - " + typeStr;
-        buffer += u"Entry #" + entryStr + u": " + data + u"\n";
+        const auto& entryInfo = cpuSetInfo.CpuSet;
+        std::u16string cpuSetEntryInfoBuffer;
+        
+        cpuSetEntryInfoBuffer += u"Id: " + conv.from_bytes(std::to_string(entryInfo.Id)) + u"\r\n";
+        cpuSetEntryInfoBuffer += u"Size: " + conv.from_bytes(std::to_string(cpuSetInfo.Size)) + u"\r\n";
+        cpuSetEntryInfoBuffer += u"Type: " + conv.from_bytes(std::to_string(cpuSetInfo.Type)) + u"\r\n";
+        cpuSetEntryInfoBuffer += u"AllFlags: " + conv.from_bytes(std::to_string(entryInfo.AllFlags)) + u"\r\n";
+        cpuSetEntryInfoBuffer += u"AllocationTag: " + conv.from_bytes(std::to_string(entryInfo.AllocationTag)) + u"\r\n";
+        cpuSetEntryInfoBuffer += u"Allocated: " + conv.from_bytes(std::to_string(entryInfo.Allocated)) + u"\r\n";
+        cpuSetEntryInfoBuffer += u"AllocatedToTargetProcess: " + conv.from_bytes(std::to_string(entryInfo.AllocatedToTargetProcess)) + u"\r\n";
+        cpuSetEntryInfoBuffer += u"CoreIndex: " + conv.from_bytes(std::to_string(entryInfo.CoreIndex)) + u"\r\n";
+        cpuSetEntryInfoBuffer += u"EfficiencyClass: " + conv.from_bytes(std::to_string(entryInfo.EfficiencyClass)) + u"\r\n";
+        cpuSetEntryInfoBuffer += u"Group: " + conv.from_bytes(std::to_string(entryInfo.Group)) + u"\r\n";
+        cpuSetEntryInfoBuffer += u"LastLevelCacheIndex: " + conv.from_bytes(std::to_string(entryInfo.LastLevelCacheIndex)) + u"\r\n";
+        cpuSetEntryInfoBuffer += u"LogicalProcessorIndex: " + conv.from_bytes(std::to_string(entryInfo.LogicalProcessorIndex)) + u"\r\n";
+        cpuSetEntryInfoBuffer += u"NumaNodeIndex: " + conv.from_bytes(std::to_string(entryInfo.NumaNodeIndex)) + u"\r\n";
+        cpuSetEntryInfoBuffer += u"Parked: " + conv.from_bytes(std::to_string(entryInfo.Parked)) + u"\r\n";
+        cpuSetEntryInfoBuffer += u"RealTime: " + conv.from_bytes(std::to_string(entryInfo.RealTime)) + u"\r\n";
+        cpuSetEntryInfoBuffer += u"SchedulingClass: " + conv.from_bytes(std::to_string(entryInfo.SchedulingClass)) + u"\r\n";
+
+        cpuSetEntriesInfo.push_back(std::move(cpuSetEntryInfoBuffer));
     }
 
     free(cpuSetsInfo);

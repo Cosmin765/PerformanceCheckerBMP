@@ -82,13 +82,18 @@ std::vector<std::u16string> HandlePickImages()
     return filepaths;
 }
 
-
-VOID HandleDisplayImages(HWND hWnd, const std::vector<std::u16string>& filepaths) {
-    std::u16string buffer = u"BMP images:\n";
+VOID HandleDisplayImages(HWND hWnd, const std::vector<std::u16string>& filepaths)
+{
+    std::u16string buffer = u"BMP images:\r\n";
 
     for (const auto& filepath : filepaths) {
         buffer += filepath;
-        buffer += L'\n';
+        buffer += u"\r\n";
     }
     SetWindowText(hWnd, (LPCWSTR)buffer.c_str());
+}
+
+VOID HandleDisplayCPUSetInfo()
+{
+
 }

@@ -94,33 +94,43 @@ VOID PopulateWindow(HWND hWnd)
         hWnd, (HMENU)UPLOAD_BUTTON_ID, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
     EXPECT(hUploadButton);
 
-    hFilenamesPanel = CreateWindow(L"STATIC", L"",
-        WS_CHILD | WS_VISIBLE | WS_BORDER,
+    hFilenamesPanel = CreateWindow(L"EDIT", L"",
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL |
+        ES_LEFT | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
         0, 0, 0, 0,
         hWnd, NULL, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
     EXPECT(hFilenamesPanel);
 
-    hInfoPanel = CreateWindow(L"STATIC", L"",
-        WS_CHILD | WS_VISIBLE | WS_BORDER,
+    hInfoPanel = CreateWindow(L"EDIT", L"",
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL |
+        ES_LEFT | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
         0, 0, 0, 0,
         hWnd, NULL, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
     EXPECT(hInfoPanel);
 
     // set the content for the info panel
-
-    ;
-
     std::u16string infoBuffer;
-    infoBuffer += u"------ SID info ------\n";
-    infoBuffer += u"Current user's SID: " + GetCurrentUserSID() + u"\n";
-    infoBuffer += u"Everyone's group SID: " + GetGroupSID("Administrators") + u"\n";
-    infoBuffer += u"Administrator's group SID: " + GetGroupSID("Everyone") + u"\n";
-    infoBuffer += u"------ HT info ------\n";
-    infoBuffer += GetHTInfo() + u"\n";
-    infoBuffer += u"------ NUMA info ------\n";
-    infoBuffer += GetNUMAInfo() + u"\n";
-    infoBuffer += u"------ CPU sets ------\n";
-    infoBuffer += GetCPUSetsInfo() + u"\n";
+    infoBuffer += u"------ SID info ------\r\n";
+    infoBuffer += u"Current user's SID: " + GetCurrentUserSID() + u"\r\n";
+    infoBuffer += u"Everyone's group SID: " + GetGroupSID("Administrators") + u"\r\n";
+    infoBuffer += u"Administrator's group SID: " + GetGroupSID("Everyone") + u"\r\n";
+    infoBuffer += u"------ HT info ------\r\n";
+    infoBuffer += GetHTInfo() + u"\r\n";
+    infoBuffer += u"------ NUMA info ------\r\n";
+    infoBuffer += GetNUMAInfo() + u"\r\n";
+    infoBuffer += u"------ CPU sets ------\r\n";
+
+    std::vector<std::u16string> cpuSetEntriesInfo;
+
+    infoBuffer += GetCPUSetsInfo(cpuSetEntriesInfo) + u"\r\n";
+
+    std::wstring_convert<std::codecvt_utf8_utf16<char16_t, 0x10ffff, std::little_endian>, char16_t> conv;
+    for (DWORD entry = 0; entry < cpuSetEntriesInfo.size(); ++entry) 
+    {
+        const auto& entryInfo = cpuSetEntriesInfo[entry];
+        infoBuffer += u"\r\n---- Entry #" + conv.from_bytes(std::to_string(entry)) + u" ----\r\n";
+        infoBuffer += entryInfo;
+    }
 
     SetWindowText(hInfoPanel, (LPCWSTR)infoBuffer.c_str());
 
