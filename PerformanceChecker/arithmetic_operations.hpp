@@ -4,40 +4,40 @@
 #define GRAYSCALE_GREEN 0.587
 #define GRAYSCALE_BLUE 0.114
 
-std::vector<BYTE> RGBA_GRAYSCALE(const std::vector<BYTE>& pixel){
+void RGBA_GRAYSCALE(std::vector<BYTE>& pixel, size_t startIndex, size_t finishIndex){
 
-    if (pixel.size() != 4){
+    if ((finishIndex - startIndex) != 4){
 
         throw std::runtime_error("Invalid argument. Must be of type RGBA32/ARGB32");
     }
 
-    std::vector<BYTE> grayscaledPixel = pixel;
-    
-    grayscaledPixel[0] = static_cast<BYTE>(GRAYSCALE_RED * static_cast<float>(pixel[0]));
+    BYTE red = pixel[startIndex];
 
-    grayscaledPixel[1] = static_cast<BYTE>(GRAYSCALE_GREEN * static_cast<float>(pixel[1]));
+    BYTE green = pixel[startIndex + 1];
 
-    grayscaledPixel[2] = static_cast<BYTE>(GRAYSCALE_BLUE * static_cast<float>(pixel[2]));
+    BYTE blue = pixel[startIndex + 2];
 
-    return grayscaledPixel;
+    BYTE grayscaleValue = static_cast<BYTE>(GRAYSCALE_RED * red + GRAYSCALE_GREEN * green + GRAYSCALE_BLUE * blue);
+
+    pixel[startIndex] = grayscaleValue;
+
+    pixel[startIndex + 1] = grayscaleValue;
+
+    pixel[startIndex + 2] = grayscaleValue;
+
 }
 
-std::vector<BYTE> RGBA_INVERSE(const std::vector<BYTE>& pixel){
+void RGBA_INVERSE(std::vector<BYTE>& pixel, size_t startIndex, size_t finishIndex){
 
-    if(pixel.size() != 4){
-        
+    if ((finishIndex - startIndex) != 4){
+
         throw std::runtime_error("Invalid argument. Must be of type RGBA32/ARGB32");
     }
 
-    std::vector<BYTE> inversedPixel = pixel;
+    pixel[startIndex] = static_cast<BYTE>(0xFF - static_cast<int>(pixel[startIndex]));
 
-    inversedPixel[0] = static_cast<BYTE>(0xFF - static_cast<int>(pixel[0]));
+    pixel[startIndex + 1] = static_cast<BYTE>(0xFF - static_cast<int>(pixel[startIndex + 1]));
 
-    inversedPixel[1] = static_cast<BYTE>(0xFF - static_cast<int>(pixel[1]));
-
-    inversedPixel[2] = static_cast<BYTE>(0xFF - static_cast<int>(pixel[2]));
-
-    return inversedPixel;
-
+    pixel[startIndex + 2] = static_cast<BYTE>(0xFF - static_cast<int>(pixel[startIndex + 2]));
 
 }
