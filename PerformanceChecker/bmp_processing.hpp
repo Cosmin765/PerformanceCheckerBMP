@@ -6,7 +6,7 @@ void grayscaleSequential(const std::string& path){
     HANDLE hGrayScaledBMP;
     HANDLE hFile;
    
-    hGrayScaledBMP = CreateFile("C:\\Facultate\\CSSO\\Week6\\imagine.bmp",
+    hGrayScaledBMP = CreateFileA("C:\\Facultate\\CSSO\\Week6\\imagine.bmp",
                                 GENERIC_WRITE,
                                 0,
                                 NULL,
@@ -22,7 +22,7 @@ void grayscaleSequential(const std::string& path){
 
     std::vector<BYTE> loadedImage = loadFileToVector(path); 
 
-    hFile = CreateFile(path.c_str(),
+    hFile = CreateFileA(path.c_str(),
                        GENERIC_READ,
                        0,
                        NULL,
@@ -67,7 +67,7 @@ void InverseSequential(const std::string& path){
     HANDLE hInversedBMP;
     HANDLE hFile;
    
-    hInversedBMP = CreateFile("C:\\Facultate\\CSSO\\Week6\\imagine.bmp",
+    hInversedBMP = CreateFileA("C:\\Facultate\\CSSO\\Week6\\imagine.bmp",
                                 GENERIC_WRITE,
                                 0,
                                 NULL,
@@ -83,7 +83,7 @@ void InverseSequential(const std::string& path){
 
     std::vector<BYTE> loadedImage = loadFileToVector(path); 
 
-    hFile = CreateFile(path.c_str(),
+    hFile = CreateFileA(path.c_str(),
                        GENERIC_READ,
                        0,
                        NULL,

@@ -1,18 +1,22 @@
-#include <Windows.h>
+﻿#include <Windows.h>
 #include <ShlObj.h>
 
-#include "bmp_parser.hpp"
+#include "bmp_processing.hpp"
+
 #include "macros.hpp"
 #include "handlers.hpp"
 #include "utils.hpp"
 #include "debugging.hpp"
 
-HWND hUploadButton = NULL;
+HWND hUploadButton = NULL, hStartButton = NULL;
 HWND hInfoPanel = NULL;
 HWND hFilenamesPanel = NULL;
-HWND hGrayscaleLabel = NULL, hGrayscaleInput = NULL;
-HWND hInvertLabel = NULL, hInvertInput = NULL;
+HWND hGrayscaleInput = NULL;
+HWND hInvertInput = NULL;
+HWND hOperationsListBox = NULL, hModesListBox = NULL;
 int width = 1024, height = 576;
+
+std::vector<std::u16string> bmpFilepaths;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -24,8 +28,52 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
         case UPLOAD_BUTTON_ID:
         {
-            const auto& filepaths = HandlePickImages();
-            HandleDisplayImages(hFilenamesPanel, filepaths);
+            auto filepaths = HandlePickImages();
+            if (filepaths.size())
+            {
+                bmpFilepaths = std::move(filepaths);
+                HandleDisplayImages(hFilenamesPanel, bmpFilepaths);
+            }
+        }
+        break;
+        case START_BUTTON_ID:
+        {
+            DWORD opsMask = 0;
+            DWORD modesMask = 0;
+
+            {
+                int itemCount = SendMessage(hOperationsListBox, LB_GETCOUNT, 0, 0);
+                for (int i = 0; i < itemCount; ++i) {
+                    if (SendMessage(hOperationsListBox, LB_GETSEL, i, 0) > 0) {
+                        opsMask |= (1 << i);
+                    }
+                }
+            }
+
+            {
+                int itemCount = SendMessage(hModesListBox, LB_GETCOUNT, 0, 0);
+                for (int i = 0; i < itemCount; ++i) {
+                    if (SendMessage(hModesListBox, LB_GETSEL, i, 0) > 0) {
+                        modesMask |= (1 << i);
+                    }
+                }
+            }
+
+            if (!opsMask)
+            {
+                MessageBox(hWnd, L"Select at least one operation", L"Error", MB_OK | MB_ICONERROR);
+                break;
+
+            }
+
+            if (!modesMask)
+            {
+                MessageBox(hWnd, L"Select at least one mode", L"Error", MB_OK | MB_ICONERROR);
+                break;
+            }
+
+            for (const auto& filepath : bmpFilepaths)
+                HandleProcessingImage(filepath, opsMask, modesMask);
         }
         break;
         default:
@@ -45,6 +93,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             // set the style for the button
             int x = (sepX - UPLOAD_BUTTON_W) / 2;
             MoveWindow(hUploadButton, x, PADDING, UPLOAD_BUTTON_W, UPLOAD_BUTTON_H, TRUE);
+        }
+
+        if (hStartButton) {
+            int x = (sepX - UPLOAD_BUTTON_W) / 2;
+            int y = 6 * PADDING + UPLOAD_BUTTON_H + 4 * LABEL_H + LIST_BOX_H;
+            MoveWindow(hStartButton, x, y, UPLOAD_BUTTON_W, UPLOAD_BUTTON_H, TRUE);
         }
 
         if (hInfoPanel) {
@@ -81,6 +135,7 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
     wc.lpszClassName = szWindowClass;
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     RegisterClass(&wc);
 
     HWND hWnd = CreateWindowW(szWindowClass, L"Performance Checker", WS_OVERLAPPEDWINDOW,
@@ -93,58 +148,8 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
     return hWnd;
 }
 
-VOID PopulateWindow(HWND hWnd) 
+VOID SetInfoPanelContent()
 {
-    // button for uploading images
-    hUploadButton = CreateWindow(L"BUTTON", L"Upload image(s)",
-        WS_TABSTOP | WS_VISIBLE | WS_CHILD,
-        0, 0, 0, 0,
-        hWnd, (HMENU)UPLOAD_BUTTON_ID, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
-    EXPECT(hUploadButton);
-
-    // inputs for specifying output paths
-
-    // grayscale
-    hGrayscaleLabel = CreateWindow(
-        L"STATIC", L"Grayscale output path:", 
-        WS_CHILD | WS_VISIBLE, 
-        0, 0, 0, 0, 
-        hWnd, NULL, NULL, NULL);
-    hGrayscaleInput = CreateWindow(
-        L"Edit", L"", 
-        WS_CHILD | WS_VISIBLE | WS_BORDER, 
-        0, 0, 0, 0, 
-        hWnd, NULL, NULL, NULL);
-    EXPECT(hGrayscaleLabel && hGrayscaleInput);
-
-    // invert
-    hInvertLabel = CreateWindow(
-        L"STATIC", L"Invert output path:",
-        WS_CHILD | WS_VISIBLE,
-        0, 0, 0, 0,
-        hWnd, NULL, NULL, NULL);
-    hInvertInput = CreateWindow(
-        L"Edit", L"",
-        WS_CHILD | WS_VISIBLE | WS_BORDER,
-        0, 0, 0, 0,
-        hWnd, NULL, NULL, NULL);
-    EXPECT(hInvertLabel && hInvertInput);
-
-    hFilenamesPanel = CreateWindow(L"EDIT", L"",
-        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL |
-        ES_LEFT | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
-        0, 0, 0, 0,
-        hWnd, NULL, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
-    EXPECT(hFilenamesPanel);
-
-    hInfoPanel = CreateWindow(L"EDIT", L"",
-        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL |
-        ES_LEFT | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
-        0, 0, 0, 0,
-        hWnd, NULL, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
-    EXPECT(hInfoPanel);
-
-    // set the content for the info panel
     std::u16string infoBuffer;
     infoBuffer += u"------ SID info ------\r\n";
     infoBuffer += u"Current user's SID: " + GetCurrentUserSID() + u"\r\n";
@@ -161,7 +166,7 @@ VOID PopulateWindow(HWND hWnd)
     infoBuffer += GetCPUSetsInfo(cpuSetEntriesInfo) + u"\r\n";
 
     std::wstring_convert<std::codecvt_utf8_utf16<char16_t, 0x10ffff, std::little_endian>, char16_t> conv;
-    for (DWORD entry = 0; entry < cpuSetEntriesInfo.size(); ++entry) 
+    for (DWORD entry = 0; entry < cpuSetEntriesInfo.size(); ++entry)
     {
         const auto& entryInfo = cpuSetEntriesInfo[entry];
         infoBuffer += u"\r\n---- Entry #" + conv.from_bytes(std::to_string(entry)) + u" ----\r\n";
@@ -183,17 +188,62 @@ VOID PopulateWindow(HWND hWnd)
     EXPECT(CloseHandle(hFile));
 }
 
-int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
+VOID PopulateWindow(HWND hWnd) 
 {
-    HWND hWnd = InitInstance(hInstance, nShowCmd);
-    PopulateWindow(hWnd);
+    // button for uploading images
+    hUploadButton = CreateButton(hWnd, L"Upload image(s)", (HMENU)UPLOAD_BUTTON_ID);
 
-    // set the style for the inputs
+    // inputs for specifying output paths
+
+    // grayscale
+    HWND hGrayscaleLabel = CreateLabel(hWnd, L"Grayscale output path:");
+    hGrayscaleInput = CreateInput(hWnd);
+
+    // invert
+    HWND hInvertLabel = CreateLabel(hWnd, L"Invert output path:");
+    hInvertInput = CreateInput(hWnd);
+
+    // area for selecting tests
+    HWND hTestsSelectionLabel = CreateLabel(hWnd, L"Tests selection");
+    
+    HWND hOperationsSelectionLabel = CreateLabel(hWnd, L"Select operations:");
+
+    HWND hModesSelectionLabel = CreateLabel(hWnd, L"Select modes:");
+
+    hOperationsListBox = CreateListBox(hWnd, { L"✯ Grayscale", L"✯ Invert" });
+    hModesListBox = CreateListBox(hWnd, { L"✯ Sequential", L"✯ Statically parallelized", L"✯ Dinamically parallelized"});
+
+    hStartButton = CreateButton(hWnd, L"Start processing", (HMENU)START_BUTTON_ID);
+
+    hFilenamesPanel = CreateTextPanel(hWnd);
+    hInfoPanel = CreateTextPanel(hWnd);
+
+    // set the content for the info panel
+    SetInfoPanelContent();
+
+    // ----------------------------------------
+
+    // style for the inputs
     MoveWindow(hGrayscaleLabel, PADDING, 2 * PADDING + UPLOAD_BUTTON_H, LABEL_W, LABEL_H, TRUE);
     MoveWindow(hGrayscaleInput, 2 * PADDING + LABEL_W, 2 * PADDING + UPLOAD_BUTTON_H, INPUT_W, INPUT_H, TRUE);
 
     MoveWindow(hInvertLabel, PADDING, 3 * PADDING + UPLOAD_BUTTON_H + LABEL_H, LABEL_W, LABEL_H, TRUE);
     MoveWindow(hInvertInput, 2 * PADDING + LABEL_W, 3 * PADDING + UPLOAD_BUTTON_H + LABEL_H, INPUT_W, INPUT_H, TRUE);
+
+    // style for tests selection
+    MoveWindow(hTestsSelectionLabel, PADDING, 4 * PADDING + UPLOAD_BUTTON_H + 2 * LABEL_H, width, LABEL_H, TRUE);
+    
+    MoveWindow(hOperationsSelectionLabel, PADDING, 5 * PADDING + UPLOAD_BUTTON_H + 3 * LABEL_H, LABEL_W, LABEL_H, TRUE);
+    MoveWindow(hModesSelectionLabel, 2 * PADDING + LABEL_W, 5 * PADDING + UPLOAD_BUTTON_H + 3 * LABEL_H, LABEL_W, LABEL_H, TRUE);
+ 
+    MoveWindow(hOperationsListBox, PADDING, 5 * PADDING + UPLOAD_BUTTON_H + 4 * LABEL_H, LABEL_W, LIST_BOX_H, TRUE);
+    MoveWindow(hModesListBox, 2 * PADDING + LABEL_W, 5 * PADDING + UPLOAD_BUTTON_H + 4 * LABEL_H, LABEL_W, LIST_BOX_H, TRUE);
+}
+
+int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
+{
+    HWND hWnd = InitInstance(hInstance, nShowCmd);
+    PopulateWindow(hWnd);
 
     // trigger size event
     MoveWindow(hWnd, 0, 0, width, height, TRUE);

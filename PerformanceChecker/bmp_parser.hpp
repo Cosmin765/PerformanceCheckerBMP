@@ -36,7 +36,7 @@ int bytesToInt(const std::vector<BYTE>& bytes) {
 
 std::vector<BYTE> loadFileToVector(const std::string& path){
 
-	HANDLE hFile = CreateFile(path.c_str(),
+	HANDLE hFile = CreateFileA(path.c_str(),
 							  GENERIC_READ,
 							  FILE_SHARE_READ,
 							  NULL,
