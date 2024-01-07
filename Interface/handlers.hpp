@@ -7,7 +7,7 @@
 
 #include "debugging.hpp"
 
-#include "utils.hpp"
+#include "interface_utils.hpp"
 
 VOID HandlePaint(HWND hWnd, int width, int height)
 {

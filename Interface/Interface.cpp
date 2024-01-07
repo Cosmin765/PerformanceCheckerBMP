@@ -5,7 +5,7 @@
 
 #include "macros.hpp"
 #include "handlers.hpp"
-#include "utils.hpp"
+#include "interface_utils.hpp"
 #include "debugging.hpp"
 
 HWND hUploadButton = NULL, hStartButton = NULL;
