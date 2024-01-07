@@ -1,15 +1,21 @@
 
 #include "arithmetic_operations.hpp"
+#include "utils.hpp"
 
 void grayscaleSequential(const std::string& path){
 
     HANDLE hGrayScaledBMP;
     HANDLE hFile;
+
+    std::string filename = getFilename(path);
+    std::string absolutePath = "C:\\Facultate\\CSSO\\Week6\\" + filename;
+
+    SECURITY_ATTRIBUTES sa = currentUserReadONLY();
    
-    hGrayScaledBMP = CreateFile("C:\\Facultate\\CSSO\\Week6\\imagine.bmp",
+    hGrayScaledBMP = CreateFile(absolutePath.c_str(),
                                 GENERIC_WRITE,
                                 0,
-                                NULL,
+                                &sa,
                                 CREATE_ALWAYS,
                                 FILE_ATTRIBUTE_NORMAL,
                                 NULL);
@@ -22,21 +28,9 @@ void grayscaleSequential(const std::string& path){
 
     std::vector<BYTE> loadedImage = loadFileToVector(path); 
 
-    hFile = CreateFile(path.c_str(),
-                       GENERIC_READ,
-                       0,
-                       NULL,
-                       OPEN_EXISTING,
-                       FILE_ATTRIBUTE_NORMAL,
-                       NULL);
+    std::vector<BYTE> offsetBytes (loadedImage.begin() + 10, loadedImage.begin() + 14 );
 
-    if (hFile == INVALID_HANDLE_VALUE){
-
-        DWORD error = GetLastError();
-        throw std::runtime_error("Error opening image " + std::to_string(error));
-    }
-
-    size_t pixelArrayOffset = bytesToInt(getPixelArrayOffset(hFile)); // Offset processed. Starting Image processing now.
+    size_t pixelArrayOffset = bytesToInt(offsetBytes); // Offset processed. Starting Image processing now.
 
     CloseHandle(hFile);
 
@@ -67,10 +61,15 @@ void InverseSequential(const std::string& path){
     HANDLE hInversedBMP;
     HANDLE hFile;
    
-    hInversedBMP = CreateFile("C:\\Facultate\\CSSO\\Week6\\imagine.bmp",
+    std::string filename = getFilename(path);
+    std::string absolutePath = "C:\\Facultate\\CSSO\\Week6\\" + filename;
+
+    SECURITY_ATTRIBUTES sa = currentUserReadONLY();
+   
+    hInversedBMP = CreateFile(absolutePath.c_str(),
                                 GENERIC_WRITE,
                                 0,
-                                NULL,
+                                &sa,
                                 CREATE_ALWAYS,
                                 FILE_ATTRIBUTE_NORMAL,
                                 NULL);
@@ -83,23 +82,9 @@ void InverseSequential(const std::string& path){
 
     std::vector<BYTE> loadedImage = loadFileToVector(path); 
 
-    hFile = CreateFile(path.c_str(),
-                       GENERIC_READ,
-                       0,
-                       NULL,
-                       OPEN_EXISTING,
-                       FILE_ATTRIBUTE_NORMAL,
-                       NULL);
+    std::vector<BYTE> offsetBytes (loadedImage.begin() + 10, loadedImage.begin() + 14 );
 
-    if (hFile == INVALID_HANDLE_VALUE){
-
-        DWORD error = GetLastError();
-        throw std::runtime_error("Error opening image " + std::to_string(error));
-    }
-
-    size_t pixelArrayOffset = bytesToInt(getPixelArrayOffset(hFile)); // Offset processed. Starting Image processing now.
-
-    CloseHandle(hFile);
+    size_t pixelArrayOffset = bytesToInt(offsetBytes); // Offset processed. Starting Image processing now.
 
     for (size_t i = pixelArrayOffset; i < loadedImage.size(); i += 4){
 
