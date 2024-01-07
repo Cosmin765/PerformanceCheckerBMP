@@ -5,25 +5,6 @@
 #define MAX_BYTES_TO_READ 0x4000
 
 
-std::vector<BYTE> getPixelArrayOffset(HANDLE hFile){
-
-	std::vector<BYTE> bytes (4);
-	DWORD bytesToRead = 4;
-	DWORD bytesRead;
-	OVERLAPPED ol{};
-	
-	ol.Offset = 10; // the offset where the pixel array starts is located at the 10th byte
-
-	if (!ReadFile(hFile, bytes.data(), bytesToRead, &bytesRead, &ol)){
-		DWORD error = GetLastError();
-		throw std::runtime_error ("ReadFile error " + std::to_string(error));
-
-	}
-	
-	return bytes;
-
-}
-
 int bytesToInt(const std::vector<BYTE>& bytes) {
     
     int result = 0;
