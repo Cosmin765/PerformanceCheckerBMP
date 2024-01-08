@@ -1,3 +1,5 @@
+#pragma once
+
 #include <Windows.h>
 #include <sddl.h>
 #include <string>
@@ -187,4 +189,79 @@ std::u16string GetCPUSetsInfo(std::vector<std::u16string>& cpuSetEntriesInfo) {
     free(cpuSetsInfo);
 
     return buffer;
+}
+
+std::string ConvertFromU16(std::u16string str) {
+    static std::wstring_convert<std::codecvt_utf8<char16_t>, char16_t> converter;
+    return converter.to_bytes(str);
+}
+
+std::u16string ConvertToU16(std::string str) {
+    static std::wstring_convert<std::codecvt_utf8<char16_t>, char16_t> converter;
+    return converter.from_bytes(str);
+}
+
+
+HWND CreateLabel(HWND hParent, LPCWSTR content)
+{
+    HWND hWnd = CreateWindow(
+        L"STATIC", content,
+        WS_CHILD | WS_VISIBLE,
+        0, 0, 0, 0,
+        hParent, NULL, NULL, NULL);
+    EXPECT(hWnd);
+    return hWnd;
+}
+
+HWND CreateTextPanel(HWND hParent, LPCWSTR content = L"")
+{
+    HWND hWnd = CreateWindow(L"EDIT", content,
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL |
+        ES_LEFT | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
+        0, 0, 0, 0,
+        hParent, NULL, (HINSTANCE)GetWindowLongPtr(hParent, GWLP_HINSTANCE), NULL);
+    EXPECT(hWnd);
+    return hWnd;
+}
+
+HWND CreateInput(HWND hParent)
+{
+    HWND hWnd = CreateWindow(
+        L"EDIT", L"",
+        WS_CHILD | WS_VISIBLE | WS_BORDER,
+        0, 0, 0, 0,
+        hParent, NULL, (HINSTANCE)GetWindowLongPtr(hParent, GWLP_HINSTANCE), NULL);
+    EXPECT(hWnd);
+    return hWnd;
+}
+
+HWND CreateListBox(HWND hParent, const std::vector<LPCWSTR>& options = {})
+{
+    HWND hWnd = CreateWindowEx(
+        0,
+        L"LISTBOX", L"",
+        LBS_MULTIPLESEL | WS_CHILD | WS_VISIBLE | WS_VSCROLL,
+        0, 0, 0, 0,
+        hParent,
+        NULL,
+        (HINSTANCE)GetWindowLongPtr(hParent, GWLP_HINSTANCE),
+        NULL
+    );
+
+    EXPECT(hWnd);
+
+    for (const auto& option : options)
+        SendMessage(hWnd, LB_ADDSTRING, 0, (LPARAM)option);
+
+    return hWnd;
+}
+
+HWND CreateButton(HWND hParent, LPCWSTR content, HMENU buttonId = NULL)
+{
+    HWND hWnd = CreateWindow(L"BUTTON", content,
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD,
+        0, 0, 0, 0,
+        hParent, buttonId, (HINSTANCE)GetWindowLongPtr(hParent, GWLP_HINSTANCE), NULL);
+    EXPECT(hWnd);
+    return hWnd;
 }

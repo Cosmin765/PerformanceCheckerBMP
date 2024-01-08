@@ -29,7 +29,7 @@
     <ClInclude Include="handlers.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="utils.hpp">
+    <ClInclude Include="interface_utils.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

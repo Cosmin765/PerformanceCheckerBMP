@@ -1,9 +1,13 @@
+#pragma once
+
 #include <Windows.h>
 #include <ShObjIdl.h>
 #include <vector>
 #include <string>
 
 #include "debugging.hpp"
+
+#include "interface_utils.hpp"
 
 VOID HandlePaint(HWND hWnd, int width, int height)
 {
@@ -91,4 +95,31 @@ VOID HandleDisplayImages(HWND hWnd, const std::vector<std::u16string>& filepaths
         buffer += u"\r\n";
     }
     SetWindowText(hWnd, (LPCWSTR)buffer.c_str());
+}
+
+
+VOID HandleProcessingImage(std::u16string filepath, DWORD opsMask, DWORD modesMask)
+{
+    std::string ansii_filepath = ConvertFromU16(filepath);
+
+    BOOL grayscale = opsMask & (1 << GRAYSCALE_OP_INDEX);
+    BOOL invert = opsMask & (1 << INVERT_OP_INDEX);
+
+    if (modesMask & (1 << SEQUENTIAL_MODE_INDEX))
+    {
+        // TODO: handle output paths
+        if (grayscale) 
+            grayscaleSequential(ansii_filepath);
+
+        if (invert)
+            InverseSequential(ansii_filepath);
+    }
+    else if(modesMask & (1 << STATIC_MODE_INDEX))
+    {
+        // TODO: implement
+    }
+    else if(modesMask & (1 << DYNAMIC_MODE_INDEX))
+    {
+        // TODO: implement
+    }
 }

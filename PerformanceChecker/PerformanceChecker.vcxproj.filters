@@ -18,5 +18,11 @@
     <ClInclude Include="bmp_parser.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="arithmetic_operations.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="bmp_processing.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

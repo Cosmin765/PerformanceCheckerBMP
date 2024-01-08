@@ -5,14 +5,13 @@
 void grayscaleSequential(const std::string& path){
 
     HANDLE hGrayScaledBMP;
-    HANDLE hFile;
 
     std::string filename = getFilename(path);
     std::string absolutePath = "C:\\Facultate\\CSSO\\Week6\\" + filename;
 
     SECURITY_ATTRIBUTES sa = currentUserReadONLY();
    
-    hGrayScaledBMP = CreateFile(absolutePath.c_str(),
+    hGrayScaledBMP = CreateFileA(absolutePath.c_str(),
                                 GENERIC_WRITE,
                                 0,
                                 &sa,
@@ -32,8 +31,6 @@ void grayscaleSequential(const std::string& path){
 
     size_t pixelArrayOffset = bytesToInt(offsetBytes); // Offset processed. Starting Image processing now.
 
-    CloseHandle(hFile);
-
     for (size_t i = pixelArrayOffset; i < loadedImage.size(); i += 4){
 
         RGBA_GRAYSCALE(loadedImage, i, i + 4);
@@ -47,7 +44,6 @@ void grayscaleSequential(const std::string& path){
     if(!(WriteFile(hGrayScaledBMP, loadedImage.data(), dwBytesToWrite, NULL, NULL))){
 
         DWORD error = GetLastError();
-        CloseHandle(hFile);
         CloseHandle(hGrayScaledBMP);
         throw std::runtime_error("Error writing to file " + std::to_string(error));
     }
@@ -59,14 +55,13 @@ void grayscaleSequential(const std::string& path){
 void InverseSequential(const std::string& path){
 
     HANDLE hInversedBMP;
-    HANDLE hFile;
    
     std::string filename = getFilename(path);
     std::string absolutePath = "C:\\Facultate\\CSSO\\Week6\\" + filename;
 
     SECURITY_ATTRIBUTES sa = currentUserReadONLY();
    
-    hInversedBMP = CreateFile(absolutePath.c_str(),
+    hInversedBMP = CreateFileA(absolutePath.c_str(),
                                 GENERIC_WRITE,
                                 0,
                                 &sa,
@@ -99,7 +94,6 @@ void InverseSequential(const std::string& path){
     if(!(WriteFile(hInversedBMP, loadedImage.data(), dwBytesToWrite, NULL, NULL))){
 
         DWORD error = GetLastError();
-        CloseHandle(hFile);
         CloseHandle(hInversedBMP);
         throw std::runtime_error("Error writing to file " + std::to_string(error));
     }
