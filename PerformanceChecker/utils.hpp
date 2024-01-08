@@ -3,7 +3,6 @@
 #include <iostream>
 #include <aclapi.h>
 
-
 #pragma once
 
 std::string getFilename(const std::string& path){
@@ -144,4 +143,6 @@ SECURITY_ATTRIBUTES currentUserReadONLY(){
         ExitProcess(1);
 
 }
+
+
 

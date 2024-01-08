@@ -2,8 +2,26 @@
 #include <windows.h>
 #include <vector>
 #include <string>
+#include "header_field.hpp"
+#include <iomanip>
+#include <sstream>
 #define MAX_BYTES_TO_READ 0x4000
 
+std::string bytesToHexString(const std::vector<BYTE> &bytes, size_t start, size_t end){
+
+    std::stringstream ss;
+    ss << std::hex << std::setfill('0');
+
+    for(size_t i = start; i < end; i++){
+
+        ss << std::setw(2) <<static_cast<int>(bytes[i]);
+     	ss<< ' ';
+		
+        
+    }
+
+    return ss.str();
+}
 
 int bytesToInt(const std::vector<BYTE>& bytes) {
     
@@ -59,6 +77,28 @@ std::vector<BYTE> loadFileToVector(const std::string& path){
 
 	CloseHandle(hFile);
 	return buffer;
+}
+
+std::vector<std::pair<std::string, std::string>> headerInfoFromLoadedFile(const std::vector<BYTE>& file){
+
+	std::string hexString;
+	std::pair<std::string, std::string> field;
+	std::vector<std::pair<std::string, std::string>> fieldVector;
+	int start,end;
+ 
+	for (const auto& headerField : BMP_FILE_HEADER_AND_BITMAPINFOHEADER_FIELDS){
+		
+		start = headerField.getStartingOffset();
+		end = start + headerField.getSize();
+		hexString = bytesToHexString(file, start, end);
+
+		field.first = headerField.getFieldDescription();
+		field.second = hexString;
+
+		fieldVector.push_back(field);
+	}
+
+	return fieldVector;
 }
 
 
