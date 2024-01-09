@@ -25,7 +25,7 @@ void grayscaleSequential(const std::string& path){
         throw std::runtime_error("Could not create file " + std::to_string(error));
     }
 
-    std::vector<BYTE> loadedImage = loadFileToVector(path); 
+    std::vector<BYTE> loadedImage = loadFileToVector(path);
 
     std::vector<BYTE> offsetBytes (loadedImage.begin() + 10, loadedImage.begin() + 14 );
 
