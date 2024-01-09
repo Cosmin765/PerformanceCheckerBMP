@@ -114,12 +114,24 @@ VOID HandleProcessingImage(std::u16string filepath, DWORD opsMask, DWORD modesMa
         if (invert)
             InverseSequential(ansii_filepath);
     }
-    else if(modesMask & (1 << STATIC_MODE_INDEX))
+    
+    if(modesMask & (1 << STATIC_MODE_INDEX))
     {
         // TODO: implement
     }
-    else if(modesMask & (1 << DYNAMIC_MODE_INDEX))
+    
+    if(modesMask & (1 << DYNAMIC_MODE_INDEX))
     {
-        // TODO: implement
+        auto operation = grayscale ? GrayscaleOperation : InverseOperation;
+
+        std::vector<BYTE> loadedImage = loadFileToVector(ansii_filepath);
+        DWORD offset = *(LPDWORD)(loadedImage.data() + 10);
+
+        LPDWORD buffer = (LPDWORD)(loadedImage.data() + offset);
+        LPDWORD end = (LPDWORD)(loadedImage.data() + loadedImage.size());
+        ApplyOperationChunked(operation, buffer, end);
+
+        std::string output_path = "C:\\Facultate\\CSSO\\Week6\\image_ctu.bmp";
+        SaveVectorToFile(output_path, loadedImage);
     }
 }

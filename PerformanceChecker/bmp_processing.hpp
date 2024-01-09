@@ -75,7 +75,7 @@ void InverseSequential(const std::string& path){
         throw std::runtime_error("Could not create file " + std::to_string(error));
     }
 
-    std::vector<BYTE> loadedImage = loadFileToVector(path); 
+    std::vector<BYTE> loadedImage = loadFileToVector(path);
 
     std::vector<BYTE> offsetBytes (loadedImage.begin() + 10, loadedImage.begin() + 14 );
 
@@ -100,4 +100,34 @@ void InverseSequential(const std::string& path){
 
     CloseHandle(hInversedBMP);
 
+}
+
+DWORD ApplyOperationChunked(void(*operation)(LPDWORD), LPDWORD buffer, LPDWORD end)
+{
+    while (buffer != end)
+    {
+        operation(buffer);
+        buffer++;
+    }
+    return 0;
+}
+
+
+void SaveVectorToFile(const std::string& filepath, const std::vector<BYTE>& buffer)
+{
+    SECURITY_ATTRIBUTES sa = currentUserReadONLY();
+
+    HANDLE handle = CreateFileA(filepath.c_str(), GENERIC_WRITE, 0, &sa, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+    if (handle == INVALID_HANDLE_VALUE)
+        throw std::runtime_error("Could not create file " + std::to_string(GetLastError()));
+
+    DWORD dwBytesToWrite = (DWORD)buffer.size();
+
+    if (!(WriteFile(handle, buffer.data(), dwBytesToWrite, NULL, NULL))) {
+        CloseHandle(handle);
+        throw std::runtime_error("Error writing to file " + std::to_string(GetLastError()));
+    }
+
+    CloseHandle(handle);
 }

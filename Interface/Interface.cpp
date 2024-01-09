@@ -7,7 +7,6 @@
 #include "handlers.hpp"
 #include "interface_utils.hpp"
 #include "debugging.hpp"
-#include "thread_pool.hpp"
 
 HWND hUploadButton = NULL, hStartButton = NULL;
 HWND hInfoPanel = NULL;
@@ -241,30 +240,8 @@ VOID PopulateWindow(HWND hWnd)
     MoveWindow(hModesListBox, 2 * PADDING + LABEL_W, 5 * PADDING + UPLOAD_BUTTON_H + 4 * LABEL_H, LABEL_W, LIST_BOX_H, TRUE);
 }
 
-DWORD target(LPVOID arg)
-{
-    int index = *(int*)arg;
-
-    std::string filepath = "C:\\Facultate\\CSSO\\a";
-    filepath[filepath.size() - 1] += index;
-    HANDLE handle = CreateFileA(filepath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    EXPECT(handle != INVALID_HANDLE_VALUE);
-    CloseHandle(handle);
-    return 0;
-}
-
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
-    constexpr int count = 26;
-    ThreadPool tp(count);
-    int buffer[count];
-    for (int i = 0; i < count; ++i)
-    {
-        buffer[i] = i;
-        tp.Submit(target, (LPVOID)(&buffer[i]));
-    }
-    tp.Shutdown();
-
     HWND hWnd = InitInstance(hInstance, nShowCmd);
     PopulateWindow(hWnd);
 
