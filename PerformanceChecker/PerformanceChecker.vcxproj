@@ -134,6 +134,11 @@
     <ClInclude Include="arithmetic_operations.hpp" />
     <ClInclude Include="bmp_parser.hpp" />
     <ClInclude Include="bmp_processing.hpp" />
+    <ClInclude Include="header_field.hpp" />
+    <ClInclude Include="thread_pool.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="header_field.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

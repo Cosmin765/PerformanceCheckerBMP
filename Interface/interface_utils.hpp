@@ -63,20 +63,27 @@ std::u16string GetGroupSID(LPCSTR groupName)
 
 std::u16string GetHTInfo() 
 {
-    SYSTEM_LOGICAL_PROCESSOR_INFORMATION buffer;
-    DWORD returnedLength = sizeof(buffer);
+    DWORD returnedLength = NULL;
+    GetLogicalProcessorInformation(NULL, &returnedLength);
 
-    GetLogicalProcessorInformation(&buffer, &returnedLength);
+    SYSTEM_LOGICAL_PROCESSOR_INFORMATION* buffer = (PSYSTEM_LOGICAL_PROCESSOR_INFORMATION)malloc(returnedLength);
 
-    buffer.ProcessorMask;
-    buffer.Relationship;
+    GetLogicalProcessorInformation(buffer, &returnedLength);
 
     std::u16string infoBuffer;
-
     std::wstring_convert<std::codecvt_utf8_utf16<char16_t, 0x10ffff, std::little_endian>, char16_t> conv;
-    
-    infoBuffer += u"Processor mask: " + conv.from_bytes(std::to_string(buffer.ProcessorMask)) + u"\r\n";
-    infoBuffer += u"Relationship: " + conv.from_bytes(std::to_string(buffer.Relationship));
+
+    DWORD count = returnedLength / sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
+    for (DWORD i = 0; i < count; ++i)
+    {
+        const auto& item = buffer[i];
+        infoBuffer += u"Entry #" + conv.from_bytes(std::to_string(i)) + u":\r\n";
+        infoBuffer += u"Processor mask: " + conv.from_bytes(std::to_string(item.ProcessorMask)) + u"\r\n";
+        infoBuffer += u"Relationship: " + conv.from_bytes(std::to_string(item.Relationship)) + u"\r\n";
+        infoBuffer += u"---\r\n";
+    }
+
+    free(buffer);
 
     return infoBuffer;
 }

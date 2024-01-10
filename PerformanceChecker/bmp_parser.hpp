@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include "header_field.hpp"
+#include "header_field.cpp"
 #include <iomanip>
 #include <sstream>
 #define MAX_BYTES_TO_READ 0x4000

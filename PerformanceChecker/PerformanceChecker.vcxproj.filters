@@ -24,5 +24,16 @@
     <ClInclude Include="bmp_processing.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="header_field.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="thread_pool.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="header_field.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
