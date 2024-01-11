@@ -147,5 +147,5 @@ SECURITY_ATTRIBUTES currentUserReadONLY(){
 
 }
 
-
-
+struct pixel_t {BYTE r, g, b, a;};
+struct worker_cs { DWORD index, end, state; };

@@ -8,6 +8,7 @@
 #include "debugging.hpp"
 
 #include "interface_utils.hpp"
+#include "thread_pool.hpp"
 
 VOID HandlePaint(HWND hWnd, int width, int height)
 {
@@ -126,10 +127,27 @@ VOID HandleProcessingImage(std::u16string filepath, DWORD opsMask, DWORD modesMa
 
         std::vector<BYTE> loadedImage = loadFileToVector(ansii_filepath);
         DWORD offset = *(LPDWORD)(loadedImage.data() + 10);
+        pixel_t* buffer = (pixel_t*)(loadedImage.data() + offset);
+        DWORD size = (loadedImage.size() - offset) / sizeof(pixel_t);
 
-        LPDWORD buffer = (LPDWORD)(loadedImage.data() + offset);
-        LPDWORD end = (LPDWORD)(loadedImage.data() + loadedImage.size());
-        ApplyOperationChunked(operation, buffer, end);
+        ThreadPool pool(THREADS_COUNT + 1);
+
+        worker_cs sharedData; memset(&sharedData, 0, sizeof(sharedData));
+        
+        HANDLE hMutex = CreateMutex(NULL, FALSE, NULL);
+        EXPECT(hMutex);
+
+        void* workerData[] = { buffer, &hMutex, operation, &sharedData };
+        void* coordinatorData[] = { &size, &sharedData };
+
+        pool.Submit(LoadBalancer, coordinatorData);
+        for (int i = 0; i < THREADS_COUNT; ++i)
+        {
+            pool.Submit(ApplyOperationDynamicParallel, workerData);
+        }
+        pool.Shutdown();
+
+        CloseHandle(hMutex);
 
         std::string output_path = "C:\\Facultate\\CSSO\\Week6\\image_ctu.bmp";
         SaveVectorToFile(output_path, loadedImage);
