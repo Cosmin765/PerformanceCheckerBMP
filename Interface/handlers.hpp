@@ -8,7 +8,6 @@
 #include "debugging.hpp"
 
 #include "interface_utils.hpp"
-#include "thread_pool.hpp"
 
 VOID HandlePaint(HWND hWnd, int width, int height)
 {
@@ -99,7 +98,7 @@ VOID HandleDisplayImages(HWND hWnd, const std::vector<std::u16string>& filepaths
 }
 
 
-VOID HandleProcessingImage(std::u16string filepath, DWORD opsMask, DWORD modesMask)
+VOID HandleProcessingImage(std::u16string filepath, std::u16string grayscaleOutputPath, std::u16string inverseOutputPath, DWORD opsMask, DWORD modesMask)
 {
     std::string ansii_filepath = ConvertFromU16(filepath);
 
@@ -123,33 +122,10 @@ VOID HandleProcessingImage(std::u16string filepath, DWORD opsMask, DWORD modesMa
     
     if(modesMask & (1 << DYNAMIC_MODE_INDEX))
     {
-        auto operation = grayscale ? GrayscaleOperation : InverseOperation;
+        if(grayscale)
+            StartDynamicParallel(GrayscaleOperation, ansii_filepath, ConvertFromU16(grayscaleOutputPath));
 
-        std::vector<BYTE> loadedImage = loadFileToVector(ansii_filepath);
-        DWORD offset = *(LPDWORD)(loadedImage.data() + 10);
-        pixel_t* buffer = (pixel_t*)(loadedImage.data() + offset);
-        DWORD size = (loadedImage.size() - offset) / sizeof(pixel_t);
-
-        ThreadPool pool(THREADS_COUNT + 1);
-
-        worker_cs sharedData; memset(&sharedData, 0, sizeof(sharedData));
-        
-        HANDLE hMutex = CreateMutex(NULL, FALSE, NULL);
-        EXPECT(hMutex);
-
-        void* workerData[] = { buffer, &hMutex, operation, &sharedData };
-        void* coordinatorData[] = { &size, &sharedData };
-
-        pool.Submit(LoadBalancer, coordinatorData);
-        for (int i = 0; i < THREADS_COUNT; ++i)
-        {
-            pool.Submit(ApplyOperationDynamicParallel, workerData);
-        }
-        pool.Shutdown();
-
-        CloseHandle(hMutex);
-
-        std::string output_path = "C:\\Facultate\\CSSO\\Week6\\image_ctu.bmp";
-        SaveVectorToFile(output_path, loadedImage);
+        if(invert)
+            StartDynamicParallel(InverseOperation, ansii_filepath, ConvertFromU16(inverseOutputPath));
     }
 }

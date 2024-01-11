@@ -72,8 +72,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 break;
             }
 
+            WCHAR inputBuffer[MAX_PATH];
+
             for (const auto& filepath : bmpFilepaths)
-                HandleProcessingImage(filepath, opsMask, modesMask);
+            {
+                memset(inputBuffer, 0, MAX_PATH);
+                GetWindowText(hGrayscaleInput, inputBuffer, MAX_PATH);
+                std::u16string grayscaleOutputPath= (char16_t*)inputBuffer;
+
+                memset(inputBuffer, 0, MAX_PATH);
+                GetWindowText(hInvertInput, inputBuffer, MAX_PATH);
+                std::u16string inverseOutputPath = (char16_t*)inputBuffer;
+
+                try {
+                    HandleProcessingImage(filepath, grayscaleOutputPath, inverseOutputPath, opsMask, modesMask);
+                }
+                catch (std::runtime_error error) {
+                    MessageBoxA(hWnd, error.what(), "Error", MB_OK | MB_ICONERROR);
+                }
+            }
         }
         break;
         default:
@@ -177,6 +194,8 @@ VOID SetInfoPanelContent()
 
     DWORD code = SHCreateDirectoryExA(NULL, HOME_DIR, NULL);
     EXPECT(code == ERROR_SUCCESS || code == ERROR_ALREADY_EXISTS);
+    
+    EXPECT(SetCurrentDirectoryA(HOME_DIR));
 
     HANDLE hFile = CreateFileA(INFO_FILEPATH, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     EXPECT(hFile != INVALID_HANDLE_VALUE);
@@ -220,6 +239,8 @@ VOID PopulateWindow(HWND hWnd)
 
     // set the content for the info panel
     SetInfoPanelContent();
+    SetWindowTextA(hGrayscaleInput, GRAYSCALE_OUTPUT_DIR);
+    SetWindowTextA(hInvertInput, INVERT_OUTPUT_DIR);
 
     // ----------------------------------------
 

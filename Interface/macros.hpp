@@ -37,6 +37,10 @@
 #define LIST_BOX_H 50
 
 #define HOME_DIR "C:\\Facultate\\CSSO\\Week6"
+
+#define GRAYSCALE_OUTPUT_DIR "C:\\Facultate\\CSSO\\Week6\\grayscale"
+#define INVERT_OUTPUT_DIR "C:\\Facultate\\CSSO\\Week6\\invert"
+
 #define INFO_FILEPATH "C:\\Facultate\\CSSO\\Week6\\info.txt"
 
 #define GRAYSCALE_OP_INDEX 0
@@ -45,5 +49,3 @@
 #define SEQUENTIAL_MODE_INDEX 0
 #define STATIC_MODE_INDEX 1
 #define DYNAMIC_MODE_INDEX 2
-
-#define THREADS_COUNT 32
