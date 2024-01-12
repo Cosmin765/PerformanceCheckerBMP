@@ -1,6 +1,7 @@
 
 #include "arithmetic_operations.hpp"
 #include "utils.hpp"
+#include "thread_pool.hpp"
 
 #define CHUNK_SIZE 0x4000
 #define WORKER_NONE 0
@@ -11,26 +12,8 @@
 
 void GrayscaleSequential(const std::string& path){
 
-    HANDLE hGrayScaledBMP;
-
     std::string filename = getFilename(path);
     std::string absolutePath = "C:\\Facultate\\CSSO\\Week6\\" + filename;
-
-    SECURITY_ATTRIBUTES sa = currentUserReadONLY();
-   
-    hGrayScaledBMP = CreateFileA(absolutePath.c_str(),
-                                GENERIC_WRITE,
-                                0,
-                                &sa,
-                                CREATE_ALWAYS,
-                                FILE_ATTRIBUTE_NORMAL,
-                                NULL);
-
-    if (hGrayScaledBMP == INVALID_HANDLE_VALUE){
-
-        DWORD error = GetLastError();
-        throw std::runtime_error("Could not create file " + std::to_string(error));
-    }
 
     std::vector<BYTE> loadedImage = loadFileToVector(path);
 
@@ -40,48 +23,18 @@ void GrayscaleSequential(const std::string& path){
 
     for (size_t i = pixelArrayOffset; i + 4 <= loadedImage.size(); i += 4){
 
-        DWORD* currentPixel = reinterpret_cast<DWORD*>(&loadedImage[i]);
+        pixel_t* currentPixel = reinterpret_cast<pixel_t*>(&loadedImage[i]);
         GrayscaleOperation(currentPixel);
 
     }
-
-    //writing processed vector to file.
-
-    DWORD dwBytesToWrite = (DWORD)loadedImage.size();
-
-    if(!(WriteFile(hGrayScaledBMP, loadedImage.data(), dwBytesToWrite, NULL, NULL))){
-
-        DWORD error = GetLastError();
-        CloseHandle(hGrayScaledBMP);
-        throw std::runtime_error("Error writing to file " + std::to_string(error));
-    }
-
-    CloseHandle(hGrayScaledBMP);
-
+    
+    SaveVectorToFile(absolutePath, loadedImage);
 }
 
 void InverseSequential(const std::string& path){
 
-    HANDLE hInversedBMP;
-   
     std::string filename = getFilename(path);
     std::string absolutePath = "C:\\Facultate\\CSSO\\Week6\\" + filename;
-
-    SECURITY_ATTRIBUTES sa = currentUserReadONLY();
-   
-    hInversedBMP = CreateFileA(absolutePath.c_str(),
-                                GENERIC_WRITE,
-                                0,
-                                &sa,
-                                CREATE_ALWAYS,
-                                FILE_ATTRIBUTE_NORMAL,
-                                NULL);
-
-    if (hInversedBMP == INVALID_HANDLE_VALUE){
-
-        DWORD error = GetLastError();
-        throw std::runtime_error("Could not create file " + std::to_string(error));
-    }
 
     std::vector<BYTE> loadedImage = loadFileToVector(path);
 
@@ -91,24 +44,13 @@ void InverseSequential(const std::string& path){
 
     for (size_t i = pixelArrayOffset; i + 4 <= loadedImage.size(); i += 4){
 
-        DWORD* currentPixel = reinterpret_cast<DWORD*>(&loadedImage[i]);
+        pixel_t* currentPixel = reinterpret_cast<pixel_t*>(&loadedImage[i]);
         InverseOperation(currentPixel);
 
     }
 
-    //writing processed vector to file.
-
-    DWORD dwBytesToWrite = (DWORD)loadedImage.size();
-
-    if(!(WriteFile(hInversedBMP, loadedImage.data(), dwBytesToWrite, NULL, NULL))){
-
-        DWORD error = GetLastError();
-        CloseHandle(hInversedBMP);
-        throw std::runtime_error("Error writing to file " + std::to_string(error));
-    }
-
-    CloseHandle(hInversedBMP);
-
+    SaveVectorToFile(absolutePath, loadedImage);
+   
 }
 
 
@@ -135,7 +77,7 @@ DWORD LoadBalancer(LPVOID data)
         while (sharedData->state != WORKER_REQUEST_DATA);
 
         sharedData->index = index;
-        sharedData->end = min(size, index + CHUNK_SIZE);
+        sharedData->end = std::min(size, index + CHUNK_SIZE);
         
         index += CHUNK_SIZE;
 
@@ -186,38 +128,44 @@ DWORD ApplyOperationDynamicParallel(LPVOID data)
 }
 
 
-void SaveVectorToFile(const std::string& filepath, const std::vector<BYTE>& buffer)
-{
-    SECURITY_ATTRIBUTES sa = currentUserReadONLY();
-
-    HANDLE handle = CreateFileA(filepath.c_str(), GENERIC_WRITE, 0, &sa, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-
-    if (handle == INVALID_HANDLE_VALUE)
-        throw std::runtime_error("Could not create file " + std::to_string(GetLastError()));
-
-    DWORD dwBytesToWrite = (DWORD)buffer.size();
-
-    if (!(WriteFile(handle, buffer.data(), dwBytesToWrite, NULL, NULL))) {
-        CloseHandle(handle);
-        throw std::runtime_error("Error writing to file " + std::to_string(GetLastError()));
-    }
-
-    CloseHandle(handle);
-}
-
-
 DWORD WINAPI staticThreadFunctionGrayscale (LPVOID lpParam){
     auto params = *static_cast<std::pair<std::vector<BYTE>*, std::pair<size_t, size_t>>*>(lpParam);
     auto pixels = params.first;
     auto range = params.second;
 
-    size_t start = range.first * sizeof(DWORD) + 54;
-    size_t end = range.second * sizeof(DWORD) + 54;
+    std::vector<BYTE> offsetBytes(pixels->begin() + 10, pixels->begin() + 14);
+
+    size_t offset = bytesToInt(offsetBytes);
+
+    size_t start = range.first * sizeof(DWORD) + offset;
+    size_t end = range.second * sizeof(DWORD) + offset;
 
     for(size_t i = start; i + 4 <= end; i += 4){
 
-        DWORD* currentPixel = reinterpret_cast<DWORD*>(&(*pixels)[i]);
+        pixel_t* currentPixel = reinterpret_cast<pixel_t*>(&(*pixels)[i]);
         GrayscaleOperation(currentPixel);
+     
+    }
+    
+    return 0;
+}
+
+DWORD WINAPI staticThreadFunctionInverse(LPVOID lpParam){
+    auto params = *static_cast<std::pair<std::vector<BYTE>*, std::pair<size_t, size_t>>*>(lpParam);
+    auto pixels = params.first;
+    auto range = params.second;
+
+    std::vector<BYTE> offsetBytes(pixels->begin() + 10, pixels->begin() + 14);
+
+    size_t offset = bytesToInt(offsetBytes);
+
+    size_t start = range.first * sizeof(DWORD) + offset;
+    size_t end = range.second * sizeof(DWORD) + offset;
+
+    for(size_t i = start; i + 4 <= end; i += 4){
+
+        pixel_t* currentPixel = reinterpret_cast<pixel_t*>(&(*pixels)[i]);
+        InverseOperation(currentPixel);
      
     }
     
@@ -226,7 +174,72 @@ DWORD WINAPI staticThreadFunctionGrayscale (LPVOID lpParam){
 
 void StaticParellelizedGrayscale(const std::string& path){
     
-    int workers = 32;
+    DWORD workers = getProcessorCores() * 2;
+
+    HANDLE hThreads[workers];
+    std::string filename = getFilename(path);
+    std::string absolutePath = "C:\\Facultate\\CSSO\\Week6\\" + filename;
+
+   
+
+    std::vector<BYTE> loadedImage = loadFileToVector(path); 
+
+    std::vector<BYTE> offsetBytes (loadedImage.begin() + 10, loadedImage.begin() + 14 );
+
+    size_t pixelArrayOffset = bytesToInt(offsetBytes); // Offset processed. Starting Image processing now.
+
+    size_t pixels = (loadedImage.size() - pixelArrayOffset) / sizeof(DWORD);
+    
+    size_t avgPixelsPerThread = pixels / workers;
+    size_t leftover = pixels % workers;
+   
+    
+
+    std::vector<std::pair<size_t, size_t>> threadRanges;
+
+    size_t startIndex = 0;
+    size_t endIndex = 0;
+    for (size_t i = 0; i < workers; i++) {
+        endIndex = startIndex + avgPixelsPerThread - 1 + (leftover > 0 ? 1 : 0);
+        threadRanges.push_back({startIndex, endIndex});
+        startIndex = endIndex + 1;
+        leftover = (leftover > 0) ? leftover - 1 : 0;
+    }
+
+    std::vector<std::pair<std::vector<BYTE>*, std::pair<size_t, size_t>>> params;
+    std::vector<BYTE>* pixelDataPtr = &loadedImage;
+
+    for(size_t i = 0; i < workers; i++){
+
+        params.push_back({pixelDataPtr, threadRanges[i]});
+    }
+
+    for(size_t i = 0; i < workers; i++){
+
+        hThreads[i] = CreateThread(NULL, 0, staticThreadFunctionInverse, &params[i], 0, NULL);
+        if (hThreads[i] == NULL) {
+
+            DWORD error = GetLastError(); 
+
+            throw std::runtime_error("CreateThread error " + std::to_string(error));
+        }
+
+         
+    }
+
+    WaitForMultipleObjects(workers, hThreads, TRUE, INFINITE);
+
+    for (int i = 0; i < workers; ++i) {
+        CloseHandle(hThreads[i]);
+    }
+    
+    SaveVectorToFile(absolutePath, loadedImage);
+
+}
+
+void StaticParellelizedInverse(const std::string& path){
+    
+    DWORD workers = getProcessorCores() * 2;
 
     HANDLE hThreads[workers];
     std::string filename = getFilename(path);
@@ -285,9 +298,48 @@ void StaticParellelizedGrayscale(const std::string& path){
         CloseHandle(hThreads[i]);
     }
     
-    
     SaveVectorToFile(absolutePath, loadedImage);
 
+}
+VOID StartDynamicParallel(void (*operation)(pixel_t* p), std::string filepath, std::string outputPath)
+{   
+    DWORD THREADS_COUNT = getProcessorCores() * 2;
+    if (!outputPath.size())
+        throw std::runtime_error("You must specify the output path for all the chosen operations.");
+
+    DWORD dwAttrib = GetFileAttributesA(outputPath.c_str());
+
+    if (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY))
+    {
+        std::string filename = filepath.substr(filepath.find_last_of("/\\") + 1);
+        outputPath = outputPath + "/" + filename;
+    }
+
+    std::vector<BYTE> loadedImage = loadFileToVector(filepath);
+    DWORD offset = *(LPDWORD)(loadedImage.data() + 10);
+    pixel_t* buffer = (pixel_t*)(loadedImage.data() + offset);
+    DWORD size = (loadedImage.size() - offset) / sizeof(pixel_t);
+
+    ThreadPool pool(THREADS_COUNT + 1);
+
+    worker_cs sharedData; memset(&sharedData, 0, sizeof(sharedData));
+
+    HANDLE hMutex = CreateMutex(NULL, FALSE, NULL);
+    if (!hMutex)
+        exit(1);
+
+    void* workerData[] = { buffer, &hMutex, reinterpret_cast<void*>(operation), &sharedData };
+    void* coordinatorData[] = { &size, &sharedData };
+
+    pool.Submit(LoadBalancer, coordinatorData);
+    for (int i = 0; i < THREADS_COUNT; ++i)
+        pool.Submit(ApplyOperationDynamicParallel, workerData);
+
+    pool.Shutdown();
+
+    CloseHandle(hMutex);
+
+    SaveVectorToFile(outputPath, loadedImage);
 }
 
 
