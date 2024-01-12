@@ -136,6 +136,7 @@
     <ClInclude Include="bmp_processing.hpp" />
     <ClInclude Include="header_field.hpp" />
     <ClInclude Include="thread_pool.hpp" />
+    <ClInclude Include="utils.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="header_field.cpp" />

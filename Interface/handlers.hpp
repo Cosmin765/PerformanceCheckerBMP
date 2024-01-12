@@ -98,7 +98,7 @@ VOID HandleDisplayImages(HWND hWnd, const std::vector<std::u16string>& filepaths
 }
 
 
-VOID HandleProcessingImage(std::u16string filepath, DWORD opsMask, DWORD modesMask)
+VOID HandleProcessingImage(std::u16string filepath, std::u16string grayscaleOutputPath, std::u16string inverseOutputPath, DWORD opsMask, DWORD modesMask)
 {
     std::string ansii_filepath = ConvertFromU16(filepath);
 
@@ -122,16 +122,10 @@ VOID HandleProcessingImage(std::u16string filepath, DWORD opsMask, DWORD modesMa
     
     if(modesMask & (1 << DYNAMIC_MODE_INDEX))
     {
-        auto operation = grayscale ? GrayscaleOperation : InverseOperation;
+        if(grayscale)
+            StartDynamicParallel(GrayscaleOperation, ansii_filepath, ConvertFromU16(grayscaleOutputPath));
 
-        std::vector<BYTE> loadedImage = loadFileToVector(ansii_filepath);
-        DWORD offset = *(LPDWORD)(loadedImage.data() + 10);
-
-        LPDWORD buffer = (LPDWORD)(loadedImage.data() + offset);
-        LPDWORD end = (LPDWORD)(loadedImage.data() + loadedImage.size());
-        ApplyOperationChunked(operation, buffer, end);
-
-        std::string output_path = "C:\\Facultate\\CSSO\\Week6\\image_ctu.bmp";
-        SaveVectorToFile(output_path, loadedImage);
+        if(invert)
+            StartDynamicParallel(InverseOperation, ansii_filepath, ConvertFromU16(inverseOutputPath));
     }
 }

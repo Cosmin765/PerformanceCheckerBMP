@@ -1,16 +1,11 @@
 #include "bmp_parser.hpp"
+#include "utils.hpp"
 
 #define GRAYSCALE_RED 0.299
 #define GRAYSCALE_GREEN 0.587
 #define GRAYSCALE_BLUE 0.114
 
-//#define RED_VALUE(pixel) ((pixel >> 24) & 0xFF)
-//#define GREEN_VALUE(pixel) ((pixel >> 16) & 0xFF)
-//#define BLUE_VALUE(pixel) ((pixel >> 8) & 0xFF)
 
-#define BLUE_VALUE(pixel) ((pixel >> 16) & 0xFF)
-#define GREEN_VALUE(pixel) ((pixel >> 8) & 0xFF)
-#define RED_VALUE(pixel) ((pixel >> 0) & 0xFF)
 
 // void RGBA_GRAYSCALE(std::vector<BYTE>& pixel, size_t startIndex, size_t finishIndex){
 
@@ -50,17 +45,13 @@
 
 // }
 
-void InverseOperation(LPDWORD pixel)
+void InverseOperation(pixel_t* pixel)
 {
-    *((BYTE*)pixel + 0) = 0xFF - *((BYTE*)pixel + 0);
-    *((BYTE*)pixel + 1) = 0xFF - *((BYTE*)pixel + 1);
-    *((BYTE*)pixel + 2) = 0xFF - *((BYTE*)pixel + 2);
+    *(LPDWORD)pixel = 0xFFFFFF00 - *(LPDWORD)pixel;
 }
 
-void GrayscaleOperation(LPDWORD pixel)
+void GrayscaleOperation(pixel_t* p)
 {
-    BYTE grayscaleValue = GRAYSCALE_RED * RED_VALUE(*pixel) + GRAYSCALE_GREEN * GREEN_VALUE(*pixel) + GRAYSCALE_BLUE * BLUE_VALUE(*pixel);
-    *((BYTE*)pixel + 0) = grayscaleValue;
-    *((BYTE*)pixel + 1) = grayscaleValue;
-    *((BYTE*)pixel + 2) = grayscaleValue;
+    BYTE grayscaleValue = GRAYSCALE_RED * p->r + GRAYSCALE_GREEN * p->g + GRAYSCALE_BLUE * p->b;
+    p->r = p->g = p->b = grayscaleValue;
 }
