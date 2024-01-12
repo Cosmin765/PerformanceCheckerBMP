@@ -1,10 +1,12 @@
 #include <Windows.h>
 #include <vector>
+#include <algorithm>    
+#pragma once
 
 class ThreadPool
 {
 public:
-	ThreadPool(DWORD workersCount) : workersCount(max(workersCount, 64)) {}
+	ThreadPool(DWORD workersCount) : workersCount(std::max(int(workersCount), 64)) {}
 	~ThreadPool()
 	{
 		this->Shutdown();
