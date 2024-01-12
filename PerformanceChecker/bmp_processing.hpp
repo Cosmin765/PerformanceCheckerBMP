@@ -1,12 +1,17 @@
+#pragma once
 
 #include "arithmetic_operations.hpp"
 #include "utils.hpp"
+#include "bmp_parser.hpp"
+#include "thread_pool.hpp"
 
 #define CHUNK_SIZE 0x4000
 #define WORKER_NONE 0
 #define WORKER_REQUEST_DATA 1
 #define WORKER_SENT_DATA 2
 #define WORKER_DONE 3
+
+#define THREADS_COUNT 32
 
 
 void grayscaleSequential(const std::string& path){
@@ -150,7 +155,7 @@ DWORD ApplyOperationDynamicParallel(LPVOID data)
 {
     pixel_t* pixels = *(pixel_t**)data;
     HANDLE hMutex = **(HANDLE**)((PCHAR)data + sizeof(size_t));
-    void (*operation)(pixel_t *p) = **(void (**)(pixel_t * p))((PCHAR)data + 2 * sizeof(size_t));
+    void (*operation)(pixel_t *p) = **(void (**)(pixel_t* p))((PCHAR)data + 2 * sizeof(size_t));
     worker_cs* sharedData = *(worker_cs**)((PCHAR)data + 3 * sizeof(size_t));
 
     DWORD index = 0, end = 0;
@@ -200,4 +205,45 @@ void SaveVectorToFile(const std::string& filepath, const std::vector<BYTE>& buff
     }
 
     CloseHandle(handle);
+}
+
+
+VOID StartDynamicParallel(void (*operation)(pixel_t* p), std::string filepath, std::string outputPath)
+{
+    if (!outputPath.size())
+        throw std::runtime_error("You must specify the output path for all the chosen operations.");
+
+    DWORD dwAttrib = GetFileAttributesA(outputPath.c_str());
+
+    if (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY))
+    {
+        std::string filename = filepath.substr(filepath.find_last_of("/\\") + 1);
+        outputPath = outputPath + "/" + filename;
+    }
+
+    std::vector<BYTE> loadedImage = loadFileToVector(filepath);
+    DWORD offset = *(LPDWORD)(loadedImage.data() + 10);
+    pixel_t* buffer = (pixel_t*)(loadedImage.data() + offset);
+    DWORD size = (loadedImage.size() - offset) / sizeof(pixel_t);
+
+    ThreadPool pool(THREADS_COUNT + 1);
+
+    worker_cs sharedData; memset(&sharedData, 0, sizeof(sharedData));
+
+    HANDLE hMutex = CreateMutex(NULL, FALSE, NULL);
+    if (!hMutex)
+        exit(1);
+
+    void* workerData[] = { buffer, &hMutex, operation, &sharedData };
+    void* coordinatorData[] = { &size, &sharedData };
+
+    pool.Submit(LoadBalancer, coordinatorData);
+    for (int i = 0; i < THREADS_COUNT; ++i)
+        pool.Submit(ApplyOperationDynamicParallel, workerData);
+
+    pool.Shutdown();
+
+    CloseHandle(hMutex);
+
+    SaveVectorToFile(outputPath, loadedImage);
 }
