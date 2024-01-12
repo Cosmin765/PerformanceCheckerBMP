@@ -1,8 +1,11 @@
-﻿#include <Windows.h>
+﻿#pragma once
+
+#include <Windows.h>
 #include <ShlObj.h>
 
 #include "bmp_processing.hpp"
 
+#include "header_field.cpp"
 #include "macros.hpp"
 #include "handlers.hpp"
 #include "interface_utils.hpp"

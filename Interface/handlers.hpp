@@ -109,15 +109,20 @@ VOID HandleProcessingImage(std::u16string filepath, std::u16string grayscaleOutp
     {
         // TODO: handle output paths
         if (grayscale) 
-            grayscaleSequential(ansii_filepath);
+            GrayscaleSequential(ansii_filepath);
 
         if (invert)
             InverseSequential(ansii_filepath);
     }
     
     if(modesMask & (1 << STATIC_MODE_INDEX))
-    {
-        // TODO: implement
+    { 
+        if (grayscale)
+            StaticParellelizedGrayscale(ansii_filepath);
+        
+        if (invert)
+            StaticParellelizedInverse(ansii_filepath);
+            
     }
     
     if(modesMask & (1 << DYNAMIC_MODE_INDEX))
