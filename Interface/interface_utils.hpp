@@ -67,6 +67,7 @@ std::u16string GetHTInfo()
     GetLogicalProcessorInformation(NULL, &returnedLength);
 
     SYSTEM_LOGICAL_PROCESSOR_INFORMATION* buffer = (PSYSTEM_LOGICAL_PROCESSOR_INFORMATION)malloc(returnedLength);
+    EXPECT(buffer);
 
     GetLogicalProcessorInformation(buffer, &returnedLength);
 

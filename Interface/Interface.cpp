@@ -12,8 +12,7 @@
 #include "debugging.hpp"
 
 HWND hUploadButton = NULL, hStartButton = NULL;
-HWND hInfoPanel = NULL;
-HWND hFilenamesPanel = NULL;
+HWND hFilenamesPanel = NULL, hInfoPanel = NULL;
 HWND hGrayscaleInput = NULL;
 HWND hInvertInput = NULL;
 HWND hOperationsListBox = NULL, hModesListBox = NULL;
@@ -81,14 +80,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             {
                 memset(inputBuffer, 0, MAX_PATH);
                 GetWindowText(hGrayscaleInput, inputBuffer, MAX_PATH);
-                std::u16string grayscaleOutputPath= (char16_t*)inputBuffer;
+                std::u16string grayscaleOutputPath = (char16_t*)inputBuffer;
 
                 memset(inputBuffer, 0, MAX_PATH);
                 GetWindowText(hInvertInput, inputBuffer, MAX_PATH);
-                std::u16string inverseOutputPath = (char16_t*)inputBuffer;
+                std::u16string invertOutputPath = (char16_t*)inputBuffer;
 
                 try {
-                    HandleProcessingImage(filepath, grayscaleOutputPath, inverseOutputPath, opsMask, modesMask);
+                    HandleProcessingImage(filepath, grayscaleOutputPath, invertOutputPath, opsMask, modesMask);
                 }
                 catch (std::runtime_error error) {
                     MessageBoxA(hWnd, error.what(), "Error", MB_OK | MB_ICONERROR);
@@ -107,7 +106,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         height = HIWORD(lParam);
 
         int sepX = SEPARATOR_PERCENT_X * width / 100;
-        int sepY = SEPARATOR_PERCENT_Y * height / 100;
 
         if (hUploadButton) {
             // set the style for the button
@@ -122,10 +120,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
 
         if (hInfoPanel) {
+            int sepY = SEPARATOR_PERCENT_Y_2 * height / 100;
             MoveWindow(hInfoPanel, sepX, sepY, width - sepX, height - sepY, TRUE);
         }
 
+        if (hBMPInfoPanel) {
+            int sepY1 = SEPARATOR_PERCENT_Y_1 * height / 100;
+            int sepY2 = SEPARATOR_PERCENT_Y_2 * height / 100;
+            MoveWindow(hBMPInfoPanel, sepX, sepY1, width - sepX, sepY2 - sepY1, TRUE);
+        }
+
         if (hFilenamesPanel) {
+            int sepY = SEPARATOR_PERCENT_Y_1 * height / 100;
             MoveWindow(hFilenamesPanel, sepX, 0, width - sepX, sepY, TRUE);
         }
 
@@ -238,6 +244,7 @@ VOID PopulateWindow(HWND hWnd)
     hStartButton = CreateButton(hWnd, L"Start processing", (HMENU)START_BUTTON_ID);
 
     hFilenamesPanel = CreateTextPanel(hWnd);
+    hBMPInfoPanel = CreateTextPanel(hWnd);
     hInfoPanel = CreateTextPanel(hWnd);
 
     // set the content for the info panel

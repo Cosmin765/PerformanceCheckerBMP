@@ -9,6 +9,8 @@
 #include <sstream>
 #define MAX_BYTES_TO_READ 0x4000
 
+HWND hBMPInfoPanel = NULL;
+
 std::string bytesToHexString(const std::vector<BYTE> &bytes, size_t start, size_t end){
 
     std::stringstream ss;
@@ -33,6 +35,43 @@ int bytesToInt(const std::vector<BYTE>& bytes) {
     }
     
     return result;
+}
+
+std::vector<std::pair<std::string, std::string>> headerInfoFromLoadedFile(const std::vector<BYTE>& file) {
+
+	std::string hexString;
+	std::pair<std::string, std::string> field;
+	std::vector<std::pair<std::string, std::string>> fieldVector;
+	int start, end;
+
+	for (const auto& headerField : BMP_FILE_HEADER_AND_BITMAPINFOHEADER_FIELDS) {
+
+		start = headerField.getStartingOffset();
+		end = start + headerField.getSize();
+		hexString = bytesToHexString(file, start, end);
+
+		field.first = headerField.getFieldDescription();
+		field.second = hexString;
+
+		fieldVector.push_back(field);
+	}
+
+	return fieldVector;
+}
+
+
+VOID DisplayBMPFileInfo(const std::vector<BYTE>& image, const std::string& filepath)
+{
+	CHAR buffer[0x4000]; memset(buffer, 0, 0x4000);
+	GetWindowTextA(hBMPInfoPanel, buffer, 0x4000);
+	std::string info = buffer;
+	info += "--- BMP info for " + filepath + " ---\r\n";
+	for (const auto& item : headerInfoFromLoadedFile(image))
+	{
+		info += item.first + ": " + item.second + "\r\n";
+	}
+
+	SetWindowTextA(hBMPInfoPanel, info.c_str());
 }
 
 std::vector<BYTE> loadFileToVector(const std::string& path){
@@ -78,33 +117,8 @@ std::vector<BYTE> loadFileToVector(const std::string& path){
 	}
 
 	CloseHandle(hFile);
+
+	DisplayBMPFileInfo(buffer, path);
+
 	return buffer;
 }
-
-std::vector<std::pair<std::string, std::string>> headerInfoFromLoadedFile(const std::vector<BYTE>& file){
-
-	std::string hexString;
-	std::pair<std::string, std::string> field;
-	std::vector<std::pair<std::string, std::string>> fieldVector;
-	int start,end;
- 
-	for (const auto& headerField : BMP_FILE_HEADER_AND_BITMAPINFOHEADER_FIELDS){
-		
-		start = headerField.getStartingOffset();
-		end = start + headerField.getSize();
-		hexString = bytesToHexString(file, start, end);
-
-		field.first = headerField.getFieldDescription();
-		field.second = hexString;
-
-		fieldVector.push_back(field);
-	}
-
-	return fieldVector;
-}
-
-
-
-
-
-

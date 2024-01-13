@@ -4,6 +4,9 @@
 #include <ShObjIdl.h>
 #include <vector>
 #include <string>
+#include <chrono>
+#include <functional>
+using namespace std::chrono;
 
 #include "debugging.hpp"
 
@@ -91,46 +94,71 @@ VOID HandleDisplayImages(HWND hWnd, const std::vector<std::u16string>& filepaths
     std::u16string buffer = u"BMP images:\r\n";
 
     for (const auto& filepath : filepaths) {
-        buffer += filepath;
-        buffer += u"\r\n";
+        buffer += filepath + u"\r\n";
     }
     SetWindowText(hWnd, (LPCWSTR)buffer.c_str());
 }
 
 
-VOID HandleProcessingImage(std::u16string filepath, std::u16string grayscaleOutputPath, std::u16string inverseOutputPath, DWORD opsMask, DWORD modesMask)
+VOID HandleStartProcessing(const std::string& filepath, const std::string& outputPath, std::function<void(std::vector<BYTE>&)> entryPoint)
 {
-    std::string ansii_filepath = ConvertFromU16(filepath);
+    std::vector<BYTE> loadedImage = loadFileToVector(filepath);
+
+    auto start = high_resolution_clock::now();
+    entryPoint(loadedImage);
+    auto delta = duration_cast<milliseconds>(high_resolution_clock::now() - start);
+    LogString(std::to_string(delta.count()).c_str());
+
+    std::string outPath = outputPath;
+    CheckPaths(filepath, outPath);
+
+    SaveVectorToFile(outPath, loadedImage);
+}
+
+
+VOID HandleProcessingImage(std::u16string filepath, std::u16string grayscaleOutputPath, std::u16string invertOutputPath, DWORD opsMask, DWORD modesMask)
+{
+    std::string ansiiFilepath = ConvertFromU16(filepath);
 
     BOOL grayscale = opsMask & (1 << GRAYSCALE_OP_INDEX);
     BOOL invert = opsMask & (1 << INVERT_OP_INDEX);
 
+    std::string ansiiGrayscaleOutputPath = ConvertFromU16(grayscaleOutputPath);
+    std::string ansiiInvertOutputPath = ConvertFromU16(invertOutputPath);
+
     if (modesMask & (1 << SEQUENTIAL_MODE_INDEX))
     {
-        // TODO: handle output paths
-        if (grayscale) 
-            GrayscaleSequential(ansii_filepath);
-
-        if (invert)
-            InverseSequential(ansii_filepath);
-    }
-    
-    if(modesMask & (1 << STATIC_MODE_INDEX))
-    { 
         if (grayscale)
-            StaticParellelizedGrayscale(ansii_filepath);
-        
-        if (invert)
-            StaticParellelizedInverse(ansii_filepath);
-            
-    }
-    
-    if(modesMask & (1 << DYNAMIC_MODE_INDEX))
-    {
-        if(grayscale)
-            StartDynamicParallel(GrayscaleOperation, ansii_filepath, ConvertFromU16(grayscaleOutputPath));
+            HandleStartProcessing(ansiiFilepath, ansiiGrayscaleOutputPath, GrayscaleSequential);
 
-        if(invert)
-            StartDynamicParallel(InverseOperation, ansii_filepath, ConvertFromU16(inverseOutputPath));
+        if (invert)
+            HandleStartProcessing(ansiiFilepath, ansiiInvertOutputPath, InverseSequential);
+    }
+
+    if (modesMask & (1 << STATIC_MODE_INDEX))
+    {
+        if (grayscale)
+            HandleStartProcessing(ansiiFilepath, ansiiGrayscaleOutputPath, StaticParellelizedGrayscale);
+
+        if (invert)
+            HandleStartProcessing(ansiiFilepath, ansiiInvertOutputPath, StaticParellelizedInverse);
+
+    }
+
+    if (modesMask & (1 << DYNAMIC_MODE_INDEX))
+    {
+        if (grayscale)
+            HandleStartProcessing(ansiiFilepath, ansiiGrayscaleOutputPath, [](std::vector<BYTE>& image)
+                {
+                    StartDynamicParallel(GrayscaleOperation, image);
+                });
+
+        if (invert)
+        {
+            HandleStartProcessing(ansiiFilepath, ansiiInvertOutputPath, [](std::vector<BYTE>& image)
+                {
+                    StartDynamicParallel(InverseOperation, image);
+                });
+        }
     }
 }

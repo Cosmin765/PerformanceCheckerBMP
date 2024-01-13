@@ -16,13 +16,13 @@ std::string ConvertU16String(const char16_t* str) {
 void LogString(const char* str, bool clear = false) {
 	int mode = clear ? (std::ios::out | std::ios::trunc) : (std::ios::out | std::ios::app);
 	std::ofstream fout(logLocation, mode);
-	fout << str;
+	fout << str << "\n";
 	fout.flush();
 }
 
 void LogString(const char16_t* str, bool clear = false) {
 	int mode = clear ? (std::ios::out | std::ios::trunc) : (std::ios::out | std::ios::app);
 	std::ofstream fout(logLocation, mode);
-	fout << ConvertU16String(str);
+	fout << ConvertU16String(str) << "\n";
 	fout.flush();
 }

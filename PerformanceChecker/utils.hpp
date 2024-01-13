@@ -155,13 +155,13 @@ void SaveVectorToFile(const std::string& filepath, const std::vector<BYTE>& buff
     HANDLE handle = CreateFileA(filepath.c_str(), GENERIC_WRITE, 0, &sa, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
     if (handle == INVALID_HANDLE_VALUE)
-        throw std::runtime_error("Could not create file " + std::to_string(GetLastError()));
+        throw std::runtime_error("Could not create file " + filepath);
 
     DWORD dwBytesToWrite = (DWORD)buffer.size();
 
     if (!(WriteFile(handle, buffer.data(), dwBytesToWrite, NULL, NULL))) {
         CloseHandle(handle);
-        throw std::runtime_error("Error writing to file " + std::to_string(GetLastError()));
+        throw std::runtime_error("Error writing to file " + filepath);
     }
 
     CloseHandle(handle);
@@ -202,5 +202,32 @@ DWORD getProcessorCores(){
     return processorCoreCount;
 }
 
-struct pixel_t {BYTE r, g, b, a;};
+VOID CheckPaths(const std::string& filepath, std::string& outputPath)
+{
+    if (!outputPath.size())
+        throw std::runtime_error("You must specify the output path for all the chosen operations.");
+
+    DWORD dwAttrib = GetFileAttributesA(outputPath.c_str());
+    if (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY))
+    {
+        std::string filename = filepath.substr(filepath.find_last_of("/\\") + 1);
+        outputPath = outputPath + "\\" + filename;
+    }
+
+    DWORD index = 0;
+    while (true)
+    {
+        dwAttrib = GetFileAttributesA(outputPath.c_str());
+        if (dwAttrib == INVALID_FILE_ATTRIBUTES)
+            break;
+
+        const auto& dotPos = outputPath.find_last_of(".");
+        std::string ext = outputPath.substr(dotPos);
+
+        std::string truncated = outputPath.substr(0, dotPos);
+        outputPath = truncated.substr(0, truncated.find_last_of(".")) + "." + std::to_string(index++) + ext;
+    }
+}
+
+struct pixel_t { BYTE r, g, b, a; };
 struct worker_cs { DWORD index, end, state; };
