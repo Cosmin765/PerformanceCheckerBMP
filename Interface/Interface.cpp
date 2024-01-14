@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
+
 #include <Windows.h>
 #include <ShlObj.h>
 
@@ -9,7 +11,7 @@
 #include "macros.hpp"
 #include "handlers.hpp"
 #include "interface_utils.hpp"
-#include "debugging.hpp"
+
 
 HWND hUploadButton = NULL, hStartButton = NULL;
 HWND hFilenamesPanel = NULL, hInfoPanel = NULL;
@@ -40,6 +42,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
         case START_BUTTON_ID:
         {
+            displayedImagesInfo.clear();
+            SetWindowTextA(hBMPInfoPanel, std::string().c_str());
+
+            HANDLE hCsv = CreateFileA(COMP_OUTPUT_PATH, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+            EXPECT(hCsv != INVALID_HANDLE_VALUE);
+
+            std::string csvHeader = "filepath,operation,duration(ms),workers\r\n";
+            EXPECT_ELSE(WriteFile(hCsv, csvHeader.c_str(), csvHeader.size(), NULL, NULL));
+
             DWORD opsMask = 0;
             DWORD modesMask = 0;
 
@@ -76,6 +87,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             WCHAR inputBuffer[MAX_PATH];
 
+            if (!bmpFilepaths.size())
+            {
+                MessageBoxA(hWnd, "Upload at least one image", "Error", MB_OK | MB_ICONERROR);
+                break;
+            }
+
             for (const auto& filepath : bmpFilepaths)
             {
                 memset(inputBuffer, 0, MAX_PATH);
@@ -87,12 +104,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 std::u16string invertOutputPath = (char16_t*)inputBuffer;
 
                 try {
-                    HandleProcessingImage(filepath, grayscaleOutputPath, invertOutputPath, opsMask, modesMask);
+                    HandleProcessingImage(filepath, grayscaleOutputPath, invertOutputPath, opsMask, modesMask, hCsv);
                 }
                 catch (std::runtime_error error) {
                     MessageBoxA(hWnd, error.what(), "Error", MB_OK | MB_ICONERROR);
                 }
             }
+
+            CloseHandle(hCsv);
         }
         break;
         default:
@@ -133,6 +152,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         if (hFilenamesPanel) {
             int sepY = SEPARATOR_PERCENT_Y_1 * height / 100;
             MoveWindow(hFilenamesPanel, sepX, 0, width - sepX, sepY, TRUE);
+        }
+        
+        if (hPerformancePanel) {
+            int sepY = SEPARATOR_PERCENT_Y_1 * height / 100;
+            int y = 7 * PADDING + 2 * UPLOAD_BUTTON_H + 4 * LABEL_H + LIST_BOX_H;
+            MoveWindow(hPerformancePanel, PADDING, y, sepX - PADDING, height - PADDING - y, TRUE);
         }
 
         // trigger paint event
@@ -246,6 +271,7 @@ VOID PopulateWindow(HWND hWnd)
     hFilenamesPanel = CreateTextPanel(hWnd);
     hBMPInfoPanel = CreateTextPanel(hWnd);
     hInfoPanel = CreateTextPanel(hWnd);
+    hPerformancePanel = CreateTextPanel(hWnd);
 
     // set the content for the info panel
     SetInfoPanelContent();

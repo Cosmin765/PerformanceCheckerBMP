@@ -202,7 +202,7 @@ DWORD getProcessorCores(){
     return processorCoreCount;
 }
 
-VOID CheckPaths(const std::string& filepath, std::string& outputPath)
+VOID CheckPaths(const std::string& filepath, std::string& outputPath, const std::string& operation, const std::string& duration)
 {
     if (!outputPath.size())
         throw std::runtime_error("You must specify the output path for all the chosen operations.");
@@ -214,11 +214,20 @@ VOID CheckPaths(const std::string& filepath, std::string& outputPath)
         outputPath = outputPath + "\\" + filename;
     }
 
+    // add operation name and duration
+    {
+        const auto& dotPos = outputPath.find_last_of(".");
+        std::string ext = outputPath.substr(dotPos);
+
+        std::string truncated = outputPath.substr(0, dotPos);
+        outputPath = truncated.substr(0, truncated.find_last_of(".")) + "_" + operation + "_" + duration + ext;
+    }
+
+    // for solving collisions
     DWORD index = 0;
     while (true)
     {
-        dwAttrib = GetFileAttributesA(outputPath.c_str());
-        if (dwAttrib == INVALID_FILE_ATTRIBUTES)
+        if (GetFileAttributesA(outputPath.c_str()) == INVALID_FILE_ATTRIBUTES)
             break;
 
         const auto& dotPos = outputPath.find_last_of(".");
@@ -228,6 +237,22 @@ VOID CheckPaths(const std::string& filepath, std::string& outputPath)
         outputPath = truncated.substr(0, truncated.find_last_of(".")) + "." + std::to_string(index++) + ext;
     }
 }
+
+VOID AppendTextToWindow(HWND hWnd, const std::string& text)
+{
+    int bufferSize = GetWindowTextLengthA(hWnd) + text.size() + 1;
+
+    char* buffer = (char*)malloc(bufferSize);
+    if (!buffer)
+        return;
+
+    GetWindowTextA(hWnd, buffer, bufferSize);
+    strcat_s(buffer, bufferSize, text.c_str());
+    SetWindowTextA(hWnd, buffer);
+
+    free(buffer);
+}
+
 
 struct pixel_t { BYTE r, g, b, a; };
 struct worker_cs { DWORD index, end, state; };

@@ -23,9 +23,6 @@
     <ClInclude Include="macros.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="debugging.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="handlers.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>

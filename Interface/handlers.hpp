@@ -8,9 +8,9 @@
 #include <functional>
 using namespace std::chrono;
 
-#include "debugging.hpp"
-
 #include "interface_utils.hpp"
+
+HWND hPerformancePanel = NULL;
 
 VOID HandlePaint(HWND hWnd, int width, int height)
 {
@@ -100,23 +100,34 @@ VOID HandleDisplayImages(HWND hWnd, const std::vector<std::u16string>& filepaths
 }
 
 
-VOID HandleStartProcessing(const std::string& filepath, const std::string& outputPath, std::function<void(std::vector<BYTE>&)> entryPoint)
+VOID HandleStartProcessing(const std::string& filepath, const std::string& outputPath, const std::string& operation, std::function<void(std::vector<BYTE>&)> entryPoint, HANDLE hCsv, int workers = 1)
 {
     std::vector<BYTE> loadedImage = loadFileToVector(filepath);
 
     auto start = high_resolution_clock::now();
     entryPoint(loadedImage);
     auto delta = duration_cast<milliseconds>(high_resolution_clock::now() - start);
-    LogString(std::to_string(delta.count()).c_str());
+
+    std::string durationStr = std::to_string(delta.count());
 
     std::string outPath = outputPath;
-    CheckPaths(filepath, outPath);
+    CheckPaths(filepath, outPath, operation, durationStr);
 
     SaveVectorToFile(outPath, loadedImage);
+
+    std::string stats = "Processed " + filepath + " with operation " + operation + 
+        (workers == -1 ? "" : " and " + std::to_string(workers) + " threads") + " in " + 
+        durationStr + "ms. Result saved at location " + outPath + "\r\n";
+    AppendTextToWindow(hPerformancePanel, stats);
+
+    std::string csvHeader = "filepath,operation,duration(ms),workers";
+
+    std::string csvLine = filepath + "," + operation + "," + durationStr + "," + std::to_string(workers) + "\r\n";
+    EXPECT_ELSE(WriteFile(hCsv, csvLine.c_str(), csvLine.size(), NULL, NULL));
 }
 
 
-VOID HandleProcessingImage(std::u16string filepath, std::u16string grayscaleOutputPath, std::u16string invertOutputPath, DWORD opsMask, DWORD modesMask)
+VOID HandleProcessingImage(std::u16string filepath, std::u16string grayscaleOutputPath, std::u16string invertOutputPath, DWORD opsMask, DWORD modesMask, HANDLE hCsv)
 {
     std::string ansiiFilepath = ConvertFromU16(filepath);
 
@@ -126,39 +137,63 @@ VOID HandleProcessingImage(std::u16string filepath, std::u16string grayscaleOutp
     std::string ansiiGrayscaleOutputPath = ConvertFromU16(grayscaleOutputPath);
     std::string ansiiInvertOutputPath = ConvertFromU16(invertOutputPath);
 
+    DWORD maxWorkers = getProcessorCores() * 2;
+
     if (modesMask & (1 << SEQUENTIAL_MODE_INDEX))
     {
         if (grayscale)
-            HandleStartProcessing(ansiiFilepath, ansiiGrayscaleOutputPath, GrayscaleSequential);
+            HandleStartProcessing(ansiiFilepath, ansiiGrayscaleOutputPath, "grayscale_sequential", GrayscaleSequential, hCsv);
 
         if (invert)
-            HandleStartProcessing(ansiiFilepath, ansiiInvertOutputPath, InverseSequential);
+            HandleStartProcessing(ansiiFilepath, ansiiInvertOutputPath, "invert_sequential", InverseSequential, hCsv);
     }
 
     if (modesMask & (1 << STATIC_MODE_INDEX))
     {
         if (grayscale)
-            HandleStartProcessing(ansiiFilepath, ansiiGrayscaleOutputPath, StaticParellelizedGrayscale);
+        {
+            for (DWORD workers = 1; workers <= maxWorkers; ++workers)
+            {
+                auto entryPoint = [workers](std::vector<BYTE>& image) {
+                    StaticParellelizedGrayscale(image, workers);
+                    };
+                HandleStartProcessing(ansiiFilepath, ansiiGrayscaleOutputPath, "grayscale_static", entryPoint, hCsv, workers);
+            }
+        }
 
         if (invert)
-            HandleStartProcessing(ansiiFilepath, ansiiInvertOutputPath, StaticParellelizedInverse);
-
+        {
+            for (DWORD workers = 1; workers <= maxWorkers; ++workers)
+            {
+                auto entryPoint = [workers](std::vector<BYTE>& image) {
+                    StaticParellelizedInverse(image, workers);
+                    };
+                HandleStartProcessing(ansiiFilepath, ansiiInvertOutputPath, "invert_static", entryPoint, hCsv, workers);
+            }
+        }
     }
 
     if (modesMask & (1 << DYNAMIC_MODE_INDEX))
     {
         if (grayscale)
-            HandleStartProcessing(ansiiFilepath, ansiiGrayscaleOutputPath, [](std::vector<BYTE>& image)
-                {
-                    StartDynamicParallel(GrayscaleOperation, image);
-                });
-
+        {
+            for (DWORD workers = 1; workers <= maxWorkers; ++workers)
+            {
+                auto entryPoint = [workers](std::vector<BYTE>& image) {
+                        StartDynamicParallel(GrayscaleOperation, image, workers);
+                    };
+                HandleStartProcessing(ansiiFilepath, ansiiGrayscaleOutputPath, "grayscale_dynamic", entryPoint, hCsv, workers);
+            }
+        }
         if (invert)
         {
-            HandleStartProcessing(ansiiFilepath, ansiiInvertOutputPath, [](std::vector<BYTE>& image)
-                {
-                    StartDynamicParallel(InverseOperation, image);
-                });
+            for (DWORD workers = 1; workers <= maxWorkers; ++workers)
+            {
+                auto entryPoint = [workers](std::vector<BYTE>& image) {
+                    StartDynamicParallel(InverseOperation, image, workers);
+                    };
+                HandleStartProcessing(ansiiFilepath, ansiiInvertOutputPath, "invert_dynamic", entryPoint, hCsv, workers);
+            }
         }
     }
 }

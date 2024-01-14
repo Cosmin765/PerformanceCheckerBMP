@@ -5,8 +5,10 @@
 #include <vector>
 #include <string>
 #include "header_field.hpp"
+#include "utils.hpp"
 #include <iomanip>
 #include <sstream>
+#include <unordered_set>
 #define MAX_BYTES_TO_READ 0x4000
 
 HWND hBMPInfoPanel = NULL;
@@ -16,13 +18,8 @@ std::string bytesToHexString(const std::vector<BYTE> &bytes, size_t start, size_
     std::stringstream ss;
     ss << std::hex << std::setfill('0');
 
-    for(size_t i = start; i < end; i++){
-
-        ss << std::setw(2) <<static_cast<int>(bytes[i]);
-     	ss<< ' ';
-		
-        
-    }
+    for(size_t i = start; i < end; i++)
+        ss << std::setw(2) << static_cast<int>(bytes[i]) << ' ';
 
     return ss.str();
 }
@@ -59,19 +56,23 @@ std::vector<std::pair<std::string, std::string>> headerInfoFromLoadedFile(const 
 	return fieldVector;
 }
 
+std::unordered_set<std::string> displayedImagesInfo;
+
 
 VOID DisplayBMPFileInfo(const std::vector<BYTE>& image, const std::string& filepath)
 {
-	CHAR buffer[0x4000]; memset(buffer, 0, 0x4000);
-	GetWindowTextA(hBMPInfoPanel, buffer, 0x4000);
-	std::string info = buffer;
-	info += "--- BMP info for " + filepath + " ---\r\n";
-	for (const auto& item : headerInfoFromLoadedFile(image))
-	{
-		info += item.first + ": " + item.second + "\r\n";
-	}
+	if (displayedImagesInfo.find(filepath) != displayedImagesInfo.end())
+		return;
 
-	SetWindowTextA(hBMPInfoPanel, info.c_str());
+	displayedImagesInfo.insert(filepath);
+
+	std::string info = "--- BMP info for " + filepath + " ---\r\n";
+	for (const auto& item : headerInfoFromLoadedFile(image))
+		info += item.first + ": " + item.second + "\r\n";
+	
+	info += "\r\n";
+
+	AppendTextToWindow(hBMPInfoPanel, info);
 }
 
 std::vector<BYTE> loadFileToVector(const std::string& path){

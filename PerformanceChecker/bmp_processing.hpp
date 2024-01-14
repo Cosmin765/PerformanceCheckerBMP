@@ -11,8 +11,6 @@
 #define WORKER_SENT_DATA 2
 #define WORKER_DONE 3
 
-#define THREADS_COUNT 32
-
 
 void GrayscaleSequential(std::vector<BYTE>& image)
 {
@@ -67,8 +65,11 @@ DWORD LoadBalancer(LPVOID data)
         sharedData->state = WORKER_SENT_DATA;
     }
 
-    while (sharedData->state != WORKER_NONE);
-    sharedData->state = WORKER_DONE;
+    while (sharedData->state != WORKER_DONE)
+    {
+        sharedData->state = WORKER_DONE;
+        Sleep(10);
+    }
 
     return 0;
 }
@@ -85,25 +86,32 @@ DWORD ApplyOperationDynamicParallel(LPVOID data)
 
     while (sharedData->state != WORKER_DONE)
     {
-        ApplyOperationChunked(operation, pixels + index, pixels + end);
-
         if (WaitForSingleObject(hMutex, 20) == WAIT_OBJECT_0)
         {
+            while (sharedData->state != WORKER_NONE && sharedData->state != WORKER_DONE);
             if (sharedData->state == WORKER_DONE)
             {
                 ReleaseMutex(hMutex);
                 break;
             }
 
-            while (sharedData->state != WORKER_NONE);
             sharedData->state = WORKER_REQUEST_DATA;
-            while (sharedData->state != WORKER_SENT_DATA);
+
+            while (sharedData->state != WORKER_SENT_DATA && sharedData->state != WORKER_DONE);
+            if (sharedData->state == WORKER_DONE)
+            {
+                ReleaseMutex(hMutex);
+                break;
+            }
+
             sharedData->state = WORKER_NONE;
 
             index = sharedData->index;
             end = sharedData->end;
 
             ReleaseMutex(hMutex);
+
+            ApplyOperationChunked(operation, pixels + index, pixels + end);
         }
     }
 
@@ -153,11 +161,8 @@ DWORD WINAPI staticThreadFunctionInverse(LPVOID lpParam){
     return 0;
 }
 
-// TODO: parametrize the number of threads
-void StaticParellelizedGrayscale(std::vector<BYTE>& image)
+void StaticParellelizedGrayscale(std::vector<BYTE>& image, DWORD workers)
 {
-    DWORD workers = getProcessorCores() * 2;
-
     HANDLE* hThreads = new HANDLE[workers];
     if (!hThreads)
         throw std::runtime_error("Could not instantiate threads");
@@ -202,9 +207,7 @@ void StaticParellelizedGrayscale(std::vector<BYTE>& image)
 }
 
 
-void StaticParellelizedInverse(std::vector<BYTE>& image){
-    DWORD workers = getProcessorCores() * 2;
-
+void StaticParellelizedInverse(std::vector<BYTE>& image, DWORD workers){
     HANDLE* hThreads = new HANDLE[workers];
     if (!hThreads)
         throw std::runtime_error("Could not instantiate threads");
@@ -247,13 +250,14 @@ void StaticParellelizedInverse(std::vector<BYTE>& image){
     delete[] hThreads;
 }
 
-VOID StartDynamicParallel(void (*operation)(pixel_t* p), std::vector<BYTE>& image)
+
+VOID StartDynamicParallel(void (*operation)(pixel_t* p), std::vector<BYTE>& image, DWORD workers)
 {
     DWORD offset = *(LPDWORD)(image.data() + 10);
     pixel_t* buffer = (pixel_t*)(image.data() + offset);
     DWORD size = (image.size() - offset) / sizeof(pixel_t);
 
-    ThreadPool pool(THREADS_COUNT + 1);
+    ThreadPool pool(workers + 1);
 
     worker_cs sharedData; memset(&sharedData, 0, sizeof(sharedData));
 
@@ -265,7 +269,7 @@ VOID StartDynamicParallel(void (*operation)(pixel_t* p), std::vector<BYTE>& imag
     void* coordinatorData[] = { &size, &sharedData };
 
     pool.Submit(LoadBalancer, coordinatorData);
-    for (int i = 0; i < THREADS_COUNT; ++i)
+    for (int i = 0; i < workers; ++i)
         pool.Submit(ApplyOperationDynamicParallel, workerData);
 
     pool.Shutdown();

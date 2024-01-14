@@ -41,6 +41,7 @@
 
 #define GRAYSCALE_OUTPUT_DIR "C:\\Facultate\\CSSO\\Week6\\grayscale"
 #define INVERT_OUTPUT_DIR "C:\\Facultate\\CSSO\\Week6\\invert"
+#define COMP_OUTPUT_PATH "C:\\Facultate\\CSSO\\Week6\\comp.txt"
 
 #define INFO_FILEPATH "C:\\Facultate\\CSSO\\Week6\\info.txt"
 

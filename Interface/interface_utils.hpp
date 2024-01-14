@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 #include <unordered_set>
+#include <codecvt>
 
 #include "macros.hpp"
 
