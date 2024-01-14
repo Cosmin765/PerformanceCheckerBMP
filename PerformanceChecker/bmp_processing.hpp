@@ -35,17 +35,6 @@ void InverseSequential(std::vector<BYTE>& image)
 }
 
 
-DWORD ApplyOperationChunked(void(*operation)(pixel_t*), pixel_t* buffer, pixel_t* end)
-{
-    while (buffer < end)
-    {
-        operation(buffer);
-        buffer++;
-    }
-    return 0;
-}
-
-
 DWORD LoadBalancer(LPVOID data)
 {
     DWORD size = **(DWORD**)data;
@@ -75,6 +64,31 @@ DWORD LoadBalancer(LPVOID data)
 }
 
 
+#include <fstream>
+#include <locale>
+#include <codecvt>
+
+constexpr char logLocation[] = "C:\\Facultate\\CSSO\\Week6\\log";
+
+std::string ConvertU16String(const char16_t* str) {
+    static std::wstring_convert<std::codecvt_utf8<char16_t>, char16_t> converter;
+    return converter.to_bytes(str);
+}
+
+void LogString(const char* str, bool clear = false) {
+    int mode = clear ? (std::ios::out | std::ios::trunc) : (std::ios::out | std::ios::app);
+    std::ofstream fout(logLocation, mode);
+    fout << str << "\n";
+    fout.flush();
+}
+
+void LogString(const char16_t* str, bool clear = false) {
+    int mode = clear ? (std::ios::out | std::ios::trunc) : (std::ios::out | std::ios::app);
+    std::ofstream fout(logLocation, mode);
+    fout << ConvertU16String(str) << "\n";
+    fout.flush();
+}
+
 DWORD ApplyOperationDynamicParallel(LPVOID data)
 {
     pixel_t* pixels = *(pixel_t**)data;
@@ -88,6 +102,8 @@ DWORD ApplyOperationDynamicParallel(LPVOID data)
     {
         if (WaitForSingleObject(hMutex, 20) == WAIT_OBJECT_0)
         {
+            LogString(std::to_string(sharedData->state).c_str());
+
             while (sharedData->state != WORKER_NONE && sharedData->state != WORKER_DONE);
             if (sharedData->state == WORKER_DONE)
             {
@@ -104,14 +120,18 @@ DWORD ApplyOperationDynamicParallel(LPVOID data)
                 break;
             }
 
-            sharedData->state = WORKER_NONE;
-
             index = sharedData->index;
             end = sharedData->end;
 
+            sharedData->state = WORKER_NONE;
+
             ReleaseMutex(hMutex);
 
-            ApplyOperationChunked(operation, pixels + index, pixels + end);
+            while (index < end)
+            {
+                operation(pixels + index);
+                index++;
+            }
         }
     }
 
